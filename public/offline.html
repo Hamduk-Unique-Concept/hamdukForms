@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offline - Hamduk Forms</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      text-align: center;
+      max-width: 500px;
+    }
+    .icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+      opacity: 0.8;
+    }
+    h1 {
+      font-size: 32px;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+    p {
+      font-size: 16px;
+      opacity: 0.7;
+      margin-bottom: 30px;
+      line-height: 1.6;
+    }
+    .button {
+      display: inline-block;
+      padding: 12px 24px;
+      background: #ffffff;
+      color: #000000;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: 600;
+      margin-right: 10px;
+      margin-bottom: 10px;
+    }
+    .button:hover {
+      opacity: 0.9;
+    }
+    .button-secondary {
+      background: transparent;
+      color: #ffffff;
+      border: 1px solid #ffffff;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">📡</div>
+    <h1>You're Offline</h1>
+    <p>It looks like you've lost your internet connection. Some features may be limited, but you can still view cached forms and data.</p>
+    <div>
+      <a href="/" class="button">Return Home</a>
+      <a href="javascript:location.reload()" class="button button-secondary">Retry Connection</a>
+    </div>
+  </div>
+</body>
+</html>

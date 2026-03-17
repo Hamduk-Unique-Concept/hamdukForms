@@ -6,6 +6,12 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  turbopack: {
+    root: './',
+  },
+  experimental: {
+    reactCompiler: true,
+  },
 }
 
 export default nextConfig
