@@ -35,7 +35,7 @@ export default function Home() {
           <div className="text-center">
             <h1 className="text-4xl font-bold mb-4">Welcome, {user.email}!</h1>
             <p className="text-xl text-gray-600 mb-8">
-              You're logged in to Hamduk Forms. Start creating powerful forms now.
+              You're logged in to Hamduk Forms. Start creating powerful forms now thanks.
             </p>
             <Link href="/dashboard">
               <Button size="lg">Go to Dashboard</Button>
