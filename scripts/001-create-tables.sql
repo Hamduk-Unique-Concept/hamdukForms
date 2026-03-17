@@ -581,7 +581,7 @@ CREATE POLICY "Members can view responses in organization" ON form_responses
       AND user_id = auth.uid()
       AND is_active = TRUE
     ) OR
-    (user_id = auth.uid() AND anonymous_responses = FALSE)
+    user_id = auth.uid()
   );
 
 -- ============================================
