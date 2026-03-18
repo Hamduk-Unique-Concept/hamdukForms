@@ -1,6 +1,6 @@
 'use client';
 
-import { Input } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 interface ValidationRule {
   type: 'required' | 'email' | 'phone' | 'url' | 'minLength' | 'maxLength' | 'pattern' | 'min' | 'max';
