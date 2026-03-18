@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,43 +9,227 @@ const supabase = createClient(
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, role, organizationId } = await request.json();
-
-    // Get current user
     const authHeader = request.headers.get('Authorization');
     if (!authHeader) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
+    const { data: { user }, error: authError } = await supabase.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    );
+
+    if (authError || !user) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { organizationId, email, role = 'editor' } = await request.json();
+
+    if (!organizationId || !email) {
+      return NextResponse.json(
+        { message: 'Organization ID and email are required' },
+        { status: 400 }
+      );
+    }
+
+    // Verify user is part of the organization
+    const { data: orgMember } = await supabase
+      .from('organization_members')
+      .select('id')
+      .eq('organization_id', organizationId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (!orgMember) {
+      return NextResponse.json(
+        { message: 'You do not have access to this organization' },
+        { status: 403 }
+      );
+    }
+
+    // Check if email is already invited or is a member
+    const { data: existingInvite } = await supabase
+      .from('team_invitations')
+      .select('id')
+      .eq('organization_id', organizationId)
+      .eq('email', email)
+      .eq('status', 'pending')
+      .single();
+
+    if (existingInvite) {
+      return NextResponse.json(
+        { message: 'This email already has a pending invitation' },
+        { status: 400 }
+      );
+    }
+
+    // Generate invitation token
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
     // Create invitation record
-    const { data: invitation, error } = await supabase
+    const { data: invitation, error: createError } = await supabase
       .from('team_invitations')
       .insert({
+        organization_id: organizationId,
         email,
         role,
-        organization_id: organizationId,
+        token,
         status: 'pending',
-        invited_at: new Date().toISOString(),
+        expires_at: expiresAt,
+        invited_by: user.id,
       })
-      .select()
+      .select('id')
       .single();
+
+    if (createError) throw createError;
+
+    // Get organization details
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('name')
+      .eq('id', organizationId)
+      .single();
+
+    // Get inviter details
+    const { data: inviterProfile } = await supabase
+      .from('user_profiles')
+      .select('full_name')
+      .eq('user_id', user.id)
+      .single();
+
+    // Send invitation email via Resend
+    const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL}/auth/accept-invite?token=${token}`;
+
+    try {
+      const emailResponse = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: 'noreply.forms@hamduk.com.ng',
+          to: email,
+          subject: `Join ${org?.name || 'Hamduk Forms'} on Hamduk Forms`,
+          html: `
+            <!DOCTYPE html>
+            <html>
+              <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <div style="max-width: 600px; margin: 0 auto;">
+                  <h2 style="color: #1f6feb;">You're invited to join ${org?.name || 'a team'}</h2>
+                  
+                  <p>Hi there,</p>
+                  
+                  <p><strong>${inviterProfile?.full_name || 'A team member'}</strong> has invited you to join <strong>${org?.name || 'Hamduk Forms'}</strong> on Hamduk Forms as a <strong>${role}</strong>.</p>
+                  
+                  <p>
+                    <a href="${inviteLink}" style="display: inline-block; background-color: #1f6feb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                      Accept Invitation
+                    </a>
+                  </p>
+                  
+                  <p>Or copy this link: <code>${inviteLink}</code></p>
+                  
+                  <p style="color: #666; font-size: 12px;">
+                    This invitation will expire in 7 days.
+                  </p>
+                  
+                  <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+                  
+                  <p style="font-size: 12px; color: #999;">
+                    Hamduk Forms - Africa's #1 Form Platform<br>
+                    <a href="https://forms.hamduk.com.ng" style="color: #1f6feb; text-decoration: none;">forms.hamduk.com.ng</a>
+                  </p>
+                </div>
+              </body>
+            </html>
+          `,
+        }),
+      });
+
+      if (!emailResponse.ok) {
+        console.error('Resend API error:', await emailResponse.json());
+      }
+    } catch (emailError) {
+      console.error('Error sending invitation email:', emailError);
+      // Don't fail the request if email fails
+    }
+
+    return NextResponse.json(
+      { 
+        message: 'Invitation sent successfully',
+        invitationId: invitation.id,
+      },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error('Team invite error:', error);
+    return NextResponse.json(
+      { message: 'Failed to send invitation' },
+      { status: 500 }
+    );
+  }
+}
+
+// GET endpoint to list team members
+export async function GET(request: NextRequest) {
+  try {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    );
+
+    if (authError || !user) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
+    const searchParams = request.nextUrl.searchParams;
+    const organizationId = searchParams.get('organizationId');
+
+    if (!organizationId) {
+      return NextResponse.json(
+        { message: 'Organization ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // Get team members
+    const { data: members, error } = await supabase
+      .from('organization_members')
+      .select(`
+        id,
+        user_id,
+        role,
+        joined_at,
+        user_profiles(full_name, username)
+      `)
+      .eq('organization_id', organizationId)
+      .eq('is_active', true);
 
     if (error) throw error;
 
-    // In production, send email invitation
-    // For now, just return the invitation
-    return NextResponse.json({
-      id: invitation.id,
-      email,
-      name: email,
-      role,
-      joinedAt: invitation.invited_at,
-      status: 'pending',
-    });
-  } catch (error) {
-    console.error('Invite error:', error);
+    // Get pending invitations
+    const { data: invitations } = await supabase
+      .from('team_invitations')
+      .select('id, email, role, created_at, status')
+      .eq('organization_id', organizationId)
+      .eq('status', 'pending');
+
     return NextResponse.json(
-      { error: 'Failed to send invitation' },
+      { 
+        members: members || [],
+        pendingInvitations: invitations || [],
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error('Team fetch error:', error);
+    return NextResponse.json(
+      { message: 'Failed to fetch team' },
       { status: 500 }
     );
   }
