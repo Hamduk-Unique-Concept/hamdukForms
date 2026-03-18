@@ -10,7 +10,7 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: 'Hamduk Forms - Africa\'s #1 Form Platform',
   description: 'Build, deploy, and scale powerful forms with Hamduk Forms. AI-powered, Africa-optimized, and infinitely customizable.',
-  generator: 'v0.app',
+  generator: 'v0.app v2',
   icons: {
     icon: [
       {
