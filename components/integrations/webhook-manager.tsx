@@ -18,7 +18,7 @@ interface Webhook {
 }
 
 interface WebhookManagerProps {
-  formId: string;
+  formId: string | null;
   webhooks?: Webhook[];
   onWebhookCreated?: (webhook: Webhook) => void;
   onWebhookDeleted?: (webhookId: string) => void;
@@ -186,9 +186,8 @@ export default function WebhookManager({
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <span
-                        className={`inline-block w-2 h-2 rounded-full ${
-                          webhook.active ? 'bg-green-600' : 'bg-gray-400'
-                        }`}
+                        className={`inline-block w-2 h-2 rounded-full ${webhook.active ? 'bg-green-600' : 'bg-gray-400'
+                          }`}
                       />
                       <code className="text-sm bg-gray-100 px-2 py-1 rounded">
                         {webhook.url}
@@ -242,13 +241,12 @@ export default function WebhookManager({
                   </div>
                   <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                     <div
-                      className={`h-full ${
-                        getSuccessRate(webhook) > 95
+                      className={`h-full ${getSuccessRate(webhook) > 95
                           ? 'bg-green-500'
                           : getSuccessRate(webhook) > 80
                             ? 'bg-yellow-500'
                             : 'bg-red-500'
-                      }`}
+                        }`}
                       style={{ width: `${getSuccessRate(webhook)}%` }}
                     />
                   </div>
