@@ -152,7 +152,7 @@ export default function IntegrationsPage() {
         {/* Webhooks Tab */}
         <TabsContent value="webhooks" className="mt-6">
           <WebhookManager
-            formId="default"
+            formId={null}
             webhooks={webhooks}
             onWebhookCreated={(webhook) => setWebhooks([...webhooks, webhook])}
             onWebhookDeleted={(webhookId) =>
@@ -194,7 +194,7 @@ export default function IntegrationsPage() {
               <div>
                 <h4 className="font-medium mb-2">Authentication</h4>
                 <pre className="bg-gray-900 text-green-400 p-4 rounded text-xs overflow-x-auto">
-{`curl -H "Authorization: Bearer YOUR_API_KEY" \\
+                  {`curl -H "Authorization: Bearer YOUR_API_KEY" \\
   https://api.hamduk.com/v1/forms`}
                 </pre>
               </div>
