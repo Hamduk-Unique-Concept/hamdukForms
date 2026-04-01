@@ -1,23 +1,32 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import FieldPalette from './field-palette';
 import FormCanvas from './form-canvas';
 import FieldOptionsEditor from './field-options-editor';
 import ConditionalLogicEditor from './conditional-logic-editor';
 import FieldValidationEditor from './field-validation-editor';
+import { Copy, Link as LinkIcon, Globe } from 'lucide-react';
 
 interface FormBuilderProps {
   formName: string;
   formType: string;
+  formId?: string;
 }
 
-export default function FormBuilder({ formName, formType }: FormBuilderProps) {
+export default function FormBuilder({ formName, formType, formId }: FormBuilderProps) {
+  const router = useRouter();
   const [fields, setFields] = useState<any[]>([]);
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
+  const [isPublished, setIsPublished] = useState(false);
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const addField = (fieldType: string) => {
     const newField = {
@@ -56,18 +65,127 @@ export default function FormBuilder({ formName, formType }: FormBuilderProps) {
     setFields(reordered);
   };
 
-  const handleSaveForm = async () => {
+  const handleSaveForm = useCallback(async () => {
+    if (!formName.trim() || fields.length === 0) {
+      alert('Please provide a form name and at least one field');
+      return;
+    }
+
     setIsSaving(true);
     try {
-      console.log('Saving form:', { name: formName, type: formType, fields });
+      const authToken = localStorage.getItem('authToken') || '';
+      const organizationId = localStorage.getItem('organizationId') || '';
+
+      const response = await fetch('/api/forms/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          formId: formId || `form-${Date.now()}`,
+          organizationId,
+          title: formName,
+          description: '',
+          fields: fields.map((f, i) => ({
+            type: f.type,
+            label: f.label,
+            placeholder: f.placeholder,
+            required: f.required,
+            helpText: f.helpText,
+            defaultValue: f.defaultValue,
+            options: f.options,
+            validations: f.validations,
+            conditionalLogic: f.conditionalLogic,
+            order: i,
+          })),
+          settings: { formType },
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message);
+
       alert('Form saved successfully!');
-    } catch (error) {
+      if (!formId) {
+        router.push(`/dashboard/forms/${data.formId}`);
+      }
+    } catch (error: any) {
       console.error('Error saving form:', error);
-      alert('Error saving form');
+      alert(error.message || 'Error saving form');
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [formName, fields, formId, router]);
+
+  const handlePublishForm = useCallback(async () => {
+    if (!formName.trim() || fields.length === 0) {
+      alert('Please save the form first');
+      return;
+    }
+
+    setIsPublishing(true);
+    try {
+      const authToken = localStorage.getItem('authToken') || '';
+
+      // First save the form
+      await handleSaveForm();
+
+      // Then publish it
+      const response = await fetch('/api/forms/publish', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          formId: formId || `form-${Date.now()}`,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message);
+
+      setIsPublished(true);
+      setPublishedUrl(data.publishLink);
+      alert('Form published successfully!');
+    } catch (error: any) {
+      console.error('Error publishing form:', error);
+      alert(error.message || 'Error publishing form');
+    } finally {
+      setIsPublishing(false);
+    }
+  }, [formName, fields, formId, handleSaveForm]);
+
+  const handleUnpublishForm = useCallback(async () => {
+    setIsPublishing(true);
+    try {
+      const authToken = localStorage.getItem('authToken') || '';
+
+      const response = await fetch('/api/forms/publish', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          formId,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message);
+
+      setIsPublished(false);
+      setPublishedUrl(null);
+      alert('Form unpublished successfully!');
+    } catch (error: any) {
+      console.error('Error unpublishing form:', error);
+      alert(error.message || 'Error unpublishing form');
+    } finally {
+      setIsPublishing(false);
+    }
+  }, [formId]);
 
   const selectedField = fields.find(f => f.id === selectedFieldId);
 
@@ -184,14 +302,56 @@ export default function FormBuilder({ formName, formType }: FormBuilderProps) {
           </div>
         )}
 
-        <div className="border-t p-4 mt-auto">
-          <Button
-            onClick={handleSaveForm}
-            disabled={isSaving || fields.length === 0}
-            className="w-full"
-          >
-            {isSaving ? 'Saving...' : 'Save Form'}
-          </Button>
+        <div className="border-t p-4 mt-auto space-y-3">
+          {isPublished && publishedUrl && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+              <p className="text-xs font-medium text-green-800 mb-2">Published Form</p>
+              <div className="flex items-center gap-2 bg-white rounded p-2 break-all text-xs">
+                <Globe className="w-4 h-4 flex-shrink-0 text-green-600" />
+                <span>{publishedUrl}</span>
+              </div>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(publishedUrl);
+                  alert('Link copied to clipboard!');
+                }}
+                className="mt-2 text-xs text-green-700 hover:underline flex items-center gap-1"
+              >
+                <Copy className="w-3 h-3" />
+                Copy Link
+              </button>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Button
+              onClick={handleSaveForm}
+              disabled={isSaving || isPublishing || fields.length === 0}
+              variant={isPublished ? 'outline' : 'default'}
+              className="w-full"
+            >
+              {isSaving ? 'Saving...' : 'Save Draft'}
+            </Button>
+
+            {!isPublished ? (
+              <Button
+                onClick={handlePublishForm}
+                disabled={isPublishing || isSaving || fields.length === 0}
+                className="w-full bg-green-600 hover:bg-green-700"
+              >
+                {isPublishing ? 'Publishing...' : 'Publish Form'}
+              </Button>
+            ) : (
+              <Button
+                onClick={handleUnpublishForm}
+                disabled={isPublishing}
+                variant="destructive"
+                className="w-full"
+              >
+                {isPublishing ? 'Unpublishing...' : 'Unpublish Form'}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>

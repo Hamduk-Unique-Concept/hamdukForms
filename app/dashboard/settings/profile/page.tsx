@@ -36,15 +36,38 @@ export default function ProfilePage() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleProfileImageUpload = async (file: File) => {
+    try {
+      const formDataObj = new FormData();
+      formDataObj.append('file', file);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`,
+        },
+        body: formDataObj,
+      });
+
+      if (!response.ok) throw new Error('Upload failed');
+      const data = await response.json();
+      setFormData(prev => ({ ...prev, profileImage: data.url }));
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('Failed to upload image');
+    }
+  };
+
   const handleSave = async () => {
     if (!user) return;
     setLoading(true);
     try {
+      const authToken = localStorage.getItem('authToken') || '';
       const response = await fetch('/api/profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.id}`,
+          'Authorization': `Bearer ${authToken}`,
         },
         body: JSON.stringify(formData),
       });
@@ -52,6 +75,7 @@ export default function ProfilePage() {
       if (!response.ok) throw new Error('Failed to update profile');
       alert('Profile updated successfully!');
     } catch (error) {
+      console.error('Profile update error:', error);
       alert('Error updating profile');
     } finally {
       setLoading(false);
@@ -77,10 +101,26 @@ export default function ProfilePage() {
                 <div className="text-gray-400">No image</div>
               )}
             </div>
-            <Button variant="outline" className="gap-2">
-              <Upload className="w-4 h-4" />
-              Upload Picture
-            </Button>
+            <div>
+              <input
+                type="file"
+                id="profile-image"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleProfileImageUpload(file);
+                }}
+                className="hidden"
+              />
+              <Button 
+                variant="outline" 
+                className="gap-2"
+                onClick={() => document.getElementById('profile-image')?.click()}
+              >
+                <Upload className="w-4 h-4" />
+                Upload Picture
+              </Button>
+            </div>
           </div>
         </div>
 

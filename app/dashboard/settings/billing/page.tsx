@@ -24,11 +24,12 @@ export default function BillingPage() {
 
     setLoading(true);
     try {
+      const authToken = localStorage.getItem('authToken') || '';
       const response = await fetch('/api/payment-providers/connect', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user?.id}`,
+          'Authorization': `Bearer ${authToken}`,
         },
         body: JSON.stringify({
           provider,
@@ -54,11 +55,12 @@ export default function BillingPage() {
   const handleDisconnect = async (provider: string) => {
     setLoading(true);
     try {
+      const authToken = localStorage.getItem('authToken') || '';
       const response = await fetch('/api/payment-providers/disconnect', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user?.id}`,
+          'Authorization': `Bearer ${authToken}`,
         },
         body: JSON.stringify({ provider }),
       });
