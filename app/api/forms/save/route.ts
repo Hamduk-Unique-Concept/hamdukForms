@@ -13,15 +13,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    // Extract token properly
+    // Extract token properly - this is a JWT session token
     const token = authHeader.replace('Bearer ', '');
     
-    // Verify token is valid by getting user
-    const { data: { user }, error: authError } = await supabase.auth.admin.getUserById(token);
+    // Verify token by getting the user from the JWT
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
-      console.log('[v0] Auth error:', authError, 'user:', user);
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+      console.log('[v0] Auth error:', authError);
+      return NextResponse.json({ message: 'Unauthorized', error: authError?.message }, { status: 401 });
     }
 
     const {
