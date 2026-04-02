@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useAuth } from '@/app/providers';
 import FieldPalette from './field-palette';
 import FormCanvas from './form-canvas';
 import FieldOptionsEditor from './field-options-editor';
@@ -20,6 +21,7 @@ interface FormBuilderProps {
 
 export default function FormBuilder({ formName, formType, formId }: FormBuilderProps) {
   const router = useRouter();
+  const { session } = useAuth();
   const [fields, setFields] = useState<any[]>([]);
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -71,16 +73,20 @@ export default function FormBuilder({ formName, formType, formId }: FormBuilderP
       return;
     }
 
+    if (!session?.access_token) {
+      alert('You must be logged in to save forms');
+      return;
+    }
+
     setIsSaving(true);
     try {
-      const authToken = localStorage.getItem('authToken') || '';
       const organizationId = localStorage.getItem('organizationId') || '';
 
       const response = await fetch('/api/forms/save', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           formId: formId || `form-${Date.now()}`,
@@ -124,10 +130,13 @@ export default function FormBuilder({ formName, formType, formId }: FormBuilderP
       return;
     }
 
+    if (!session?.access_token) {
+      alert('You must be logged in to publish forms');
+      return;
+    }
+
     setIsPublishing(true);
     try {
-      const authToken = localStorage.getItem('authToken') || '';
-
       // First save the form
       await handleSaveForm();
 
@@ -136,7 +145,7 @@ export default function FormBuilder({ formName, formType, formId }: FormBuilderP
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           formId: formId || `form-${Date.now()}`,
@@ -158,15 +167,18 @@ export default function FormBuilder({ formName, formType, formId }: FormBuilderP
   }, [formName, fields, formId, handleSaveForm]);
 
   const handleUnpublishForm = useCallback(async () => {
+    if (!session?.access_token) {
+      alert('You must be logged in to unpublish forms');
+      return;
+    }
+
     setIsPublishing(true);
     try {
-      const authToken = localStorage.getItem('authToken') || '';
-
       const response = await fetch('/api/forms/publish', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           formId,

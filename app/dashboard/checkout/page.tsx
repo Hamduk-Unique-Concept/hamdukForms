@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useAuth } from '@/app/providers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2, ArrowLeft } from 'lucide-react';
@@ -14,6 +15,7 @@ const PLANS = {
 
 export default function CheckoutPage() {
   const router = useRouter();
+  const { session } = useAuth();
   const searchParams = useSearchParams();
   const planId = (searchParams.get('plan') || 'starter') as keyof typeof PLANS;
   const [loading, setLoading] = useState(false);
@@ -37,9 +39,13 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (!session?.access_token) {
+      alert('You must be logged in to proceed with checkout');
+      return;
+    }
+
     setLoading(true);
     try {
-      const authToken = localStorage.getItem('authToken') || '';
       const organizationId = localStorage.getItem('organizationId') || '';
 
       // Save checkout info first
@@ -47,7 +53,7 @@ export default function CheckoutPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           planId,
@@ -65,7 +71,7 @@ export default function CheckoutPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           planType: planId,
