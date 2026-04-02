@@ -191,9 +191,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
+    const authToken = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.admin.getUserById(authToken);
 
     if (authError || !user) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
