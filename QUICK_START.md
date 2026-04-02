@@ -1,14 +1,52 @@
-# Hamduk Forms - Quick Start Guide
+# Hamduk Forms - Quick Start Guide (Updated with Critical Fixes)
+
+## 🔴 CRITICAL FIX: Build Error Resolved
+The `useSearchParams() Suspense boundary` error has been FIXED in `/app/auth/accept-invite/page.tsx`. The app now builds successfully.
 
 ## Overview
-This guide will get you running Hamduk Forms in under 30 minutes.
+This guide will get you running Hamduk Forms with ALL critical fixes applied in under 30 minutes.
 
 ## Prerequisites
 - Node.js 18+ installed
 - pnpm package manager
 - Supabase account (free tier works)
+- Resend account (for email invitations)
+- Paystack account (for payments)
 - Stripe account (optional, for testing)
-- Paystack account (optional, for testing)
+
+## Critical Fixes Applied ✅
+
+### Build Error
+- ✅ Fixed `useSearchParams() Suspense boundary` error
+- ✅ App now builds and runs without errors
+
+### Form Functionality
+- ✅ Forms now SAVE to database with all fields
+- ✅ Forms can be PUBLISHED with unique URLs
+- ✅ Template selection works when creating forms
+- ✅ Form submissions save to database
+
+### Team & Collaboration
+- ✅ Team invitations send via Resend email
+- ✅ Email: `noreply.forms@hamduk.com.ng`
+- ✅ Accept invite flow fully functional
+
+### Integrations
+- ✅ 23+ integrations now available
+- ✅ Connect/disconnect fully working
+- ✅ Credentials securely stored
+
+### Payments
+- ✅ Paystack payment flow working
+- ✅ Payment provider setup complete
+- ✅ Subscription tracking functional
+
+### Profile Management
+- ✅ Profile data uploads working
+- ✅ Image upload implemented
+- ✅ All 20+ fields save correctly
+
+---
 
 ## Step 1: Initial Setup (5 minutes)
 
@@ -61,9 +99,30 @@ Wait for the query to complete. You should see all 20+ tables created.
 - transactions
 - (and others...)
 
-## Step 4: Configure Payment (Optional, 5 minutes)
+## Step 4: Configure Email (Required for Invitations)
 
-### For Stripe:
+### Set up Resend
+1. **Go to [Resend.com](https://resend.com)**
+2. **Create account and verify domain**
+3. **Domain:** `hamduk.com.ng`
+4. **Email:** `noreply.forms@hamduk.com.ng`
+5. **Add to `.env.local`:**
+```env
+RESEND_API_KEY=re_xxxxxxxxxxxxx
+```
+
+## Step 5: Configure Payment (Required for Upgrades)
+
+### For Paystack (Recommended):
+1. **Go to [Paystack.com](https://paystack.com)**
+2. **Get test keys from Dashboard**
+3. **Add to `.env.local`:**
+```env
+PAYSTACK_SECRET_KEY=sk_test_xxxxx
+NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY=pk_test_xxxxx
+```
+
+### For Stripe (Optional):
 1. **Go to [Stripe.com](https://stripe.com)**
 2. **Get test keys from Dashboard**
 3. **Add to `.env.local`:**
@@ -72,16 +131,7 @@ STRIPE_SECRET_KEY=sk_test_...
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
 ```
 
-### For Paystack:
-1. **Go to [Paystack.com](https://paystack.com)**
-2. **Get test keys from Dashboard**
-3. **Add to `.env.local`:**
-```env
-PAYSTACK_SECRET_KEY=sk_test_...
-NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY=pk_test_...
-```
-
-## Step 5: Run the Application
+## Step 6: Run the Application
 
 ```bash
 # Start development server
@@ -90,7 +140,7 @@ pnpm dev
 # App will open at http://localhost:3000
 ```
 
-## Step 6: Test the Platform
+## Step 7: Test the Platform
 
 ### Landing Page
 1. Visit `http://localhost:3000`
