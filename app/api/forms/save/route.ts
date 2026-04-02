@@ -13,11 +13,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
+    // Extract token properly
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Verify token is valid by getting user
+    const { data: { user }, error: authError } = await supabase.auth.admin.getUserById(token);
 
     if (authError || !user) {
+      console.log('[v0] Auth error:', authError, 'user:', user);
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 

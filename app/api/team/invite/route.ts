@@ -14,11 +14,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.admin.getUserById(token);
 
     if (authError || !user) {
+      console.log('[v0] Invite auth error:', authError);
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
@@ -99,16 +99,24 @@ export async function POST(request: NextRequest) {
 
     // Send invitation email via Resend
     const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL}/auth/accept-invite?token=${token}`;
+    const resendApiKey = process.env.RESEND_API_KEY;
+
+    if (!resendApiKey) {
+      console.warn('[v0] RESEND_API_KEY not configured');
+    }
 
     try {
+      console.log('[v0] Sending email to:', email);
+      console.log('[v0] Resend API Key exists:', !!resendApiKey);
+      
       const emailResponse = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+          'Authorization': `Bearer ${resendApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: 'noreply.forms@hamduk.com.ng',
+          from: 'noreply@forms.hamduk.com.ng',
           to: email,
           subject: `Join ${org?.name || 'Hamduk Forms'} on Hamduk Forms`,
           html: `
@@ -147,12 +155,16 @@ export async function POST(request: NextRequest) {
         }),
       });
 
+      const emailData = await emailResponse.json();
+      console.log('[v0] Resend response status:', emailResponse.status);
+      console.log('[v0] Resend response:', emailData);
+
       if (!emailResponse.ok) {
-        console.error('Resend API error:', await emailResponse.json());
+        console.error('Resend API error:', emailData);
       }
-    } catch (emailError) {
-      console.error('Error sending invitation email:', emailError);
-      // Don't fail the request if email fails
+    } catch (emailError: any) {
+      console.error('[v0] Error sending invitation email:', emailError.message);
+      // Don't fail the request if email fails, but log it
     }
 
     return NextResponse.json(
