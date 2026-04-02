@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { AlertCircle, CheckCircle2, Link as LinkIcon } from 'lucide-react';
 
 export default function BillingPage() {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [paymentProviders, setPaymentProviders] = useState({
     stripe: { connected: false, key: '' },
     paystack: { connected: false, key: '' },
@@ -22,14 +22,18 @@ export default function BillingPage() {
       return;
     }
 
+    if (!session?.access_token) {
+      alert('You must be logged in to connect payment providers');
+      return;
+    }
+
     setLoading(true);
     try {
-      const authToken = localStorage.getItem('authToken') || '';
       const response = await fetch('/api/payment-providers/connect', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           provider,
@@ -53,14 +57,18 @@ export default function BillingPage() {
   };
 
   const handleDisconnect = async (provider: string) => {
+    if (!session?.access_token) {
+      alert('You must be logged in to disconnect payment providers');
+      return;
+    }
+
     setLoading(true);
     try {
-      const authToken = localStorage.getItem('authToken') || '';
       const response = await fetch('/api/payment-providers/disconnect', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({ provider }),
       });

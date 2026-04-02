@@ -10,7 +10,7 @@ import { updateUserProfile } from '@/lib/auth';
 import { Upload } from 'lucide-react';
 
 export default function ProfilePage() {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
@@ -37,6 +37,11 @@ export default function ProfilePage() {
   };
 
   const handleProfileImageUpload = async (file: File) => {
+    if (!session?.access_token) {
+      alert('You must be logged in to upload images');
+      return;
+    }
+
     try {
       const formDataObj = new FormData();
       formDataObj.append('file', file);
@@ -44,7 +49,7 @@ export default function ProfilePage() {
       const response = await fetch('/api/upload', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`,
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: formDataObj,
       });
@@ -59,15 +64,18 @@ export default function ProfilePage() {
   };
 
   const handleSave = async () => {
-    if (!user) return;
+    if (!user || !session?.access_token) {
+      alert('You must be logged in to save profile');
+      return;
+    }
+
     setLoading(true);
     try {
-      const authToken = localStorage.getItem('authToken') || '';
       const response = await fetch('/api/profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify(formData),
       });

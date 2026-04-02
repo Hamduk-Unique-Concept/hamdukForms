@@ -5,10 +5,12 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useAuth } from '@/app/providers';
 import FormBuilder from '@/components/form-builder/form-builder';
 import { Loader2 } from 'lucide-react';
 
 export default function CreateFormPage() {
+  const { session } = useAuth();
   const [step, setStep] = useState<'name' | 'builder'>('name');
   const [formName, setFormName] = useState('');
   const [formType, setFormType] = useState('contact');
@@ -37,12 +39,17 @@ export default function CreateFormPage() {
     if (formName.trim()) {
       if (selectedTemplate) {
         // Create form from template
+        if (!session?.access_token) {
+          alert('You must be logged in to create forms');
+          return;
+        }
+
         try {
           const response = await fetch('/api/forms/templates', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${await getAuthToken()}`,
+              'Authorization': `Bearer ${session.access_token}`,
             },
             body: JSON.stringify({
               templateId: selectedTemplate,
@@ -61,12 +68,6 @@ export default function CreateFormPage() {
         setStep('builder');
       }
     }
-  };
-
-  const getAuthToken = async () => {
-    // This should be replaced with your actual auth token retrieval logic
-    const token = localStorage.getItem('authToken');
-    return token || '';
   };
 
   const formTypes = [
