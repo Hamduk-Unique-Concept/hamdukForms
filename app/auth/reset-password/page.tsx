@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AlertCircle, CheckCircle } from 'lucide-react';
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [password, setPassword] = useState('');
@@ -60,77 +60,79 @@ export default function ResetPasswordPage() {
     }
   }
 
+  if (success) {
+    return (
+      <div className="rounded-lg bg-green-50 border border-green-200 p-4 flex items-start gap-3">
+        <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-medium text-green-800">Password reset successfully!</p>
+          <p className="text-sm text-green-700 mt-1">Redirecting to login...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!token) {
+    return (
+      <div className="rounded-lg bg-red-50 border border-red-200 p-4 flex items-start gap-3">
+        <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+        <p className="text-sm text-red-800">Invalid or missing reset token</p>
+      </div>
+    );
+  }
+
+  return (
+    <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+      {error && (
+        <div className="rounded-md bg-red-50 p-4 border border-red-200 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm font-medium text-red-800">{error}</p>
+        </div>
+      )}
+      <div>
+        <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+          New password
+        </label>
+        <Input
+          id="password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="At least 8 characters"
+          required
+        />
+      </div>
+      <div>
+        <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+          Confirm password
+        </label>
+        <Input
+          id="confirmPassword"
+          type="password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          placeholder="Confirm password"
+          required
+        />
+      </div>
+      <Button type="submit" disabled={loading} className="w-full">
+        {loading ? 'Resetting...' : 'Reset password'}
+      </Button>
+    </form>
+  );
+}
+
+export default function ResetPasswordPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8 bg-white rounded-lg shadow-lg p-8">
         <div>
-          <h2 className="text-center text-3xl font-bold text-gray-900">
-            Set new password
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Enter your new password below
-          </p>
+          <h2 className="text-center text-3xl font-bold text-gray-900">Set new password</h2>
+          <p className="mt-2 text-center text-sm text-gray-600">Enter your new password below</p>
         </div>
-
-        {success ? (
-          <div className="rounded-lg bg-green-50 border border-green-200 p-4 flex items-start gap-3">
-            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-green-800">
-                Password reset successfully!
-              </p>
-              <p className="text-sm text-green-700 mt-1">
-                Redirecting to login...
-              </p>
-            </div>
-          </div>
-        ) : !token ? (
-          <div className="rounded-lg bg-red-50 border border-red-200 p-4 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-red-800">Invalid or missing reset token</p>
-          </div>
-        ) : (
-          <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-            {error && (
-              <div className="rounded-md bg-red-50 p-4 border border-red-200 flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                <p className="text-sm font-medium text-red-800">{error}</p>
-              </div>
-            )}
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                New password
-              </label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="At least 8 characters"
-                required
-              />
-            </div>
-
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                Confirm password
-              </label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm password"
-                required
-              />
-            </div>
-
-            <Button type="submit" disabled={loading} className="w-full">
-              {loading ? 'Resetting...' : 'Reset password'}
-            </Button>
-          </form>
-        )}
+        <Suspense fallback={<p className="text-sm text-center text-gray-500">Loading...</p>}>
+          <ResetPasswordForm />
+        </Suspense>
       </div>
     </div>
   );
