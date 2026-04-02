@@ -14,11 +14,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.admin.getUserById(token);
 
     if (authError || !user) {
+      console.log('[v0] Invite auth error:', authError);
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate invitation token
-    const token = crypto.randomBytes(32).toString('hex');
+    const invitationToken = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
     // Create invitation record
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
         organization_id: organizationId,
         email,
         role,
-        token,
+        token: invitationToken,
         status: 'pending',
         expires_at: expiresAt,
         invited_by: user.id,
@@ -98,17 +98,25 @@ export async function POST(request: NextRequest) {
       .single();
 
     // Send invitation email via Resend
-    const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL}/auth/accept-invite?token=${token}`;
+    const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL}/auth/accept-invite?token=${invitationToken}`;
+    const resendApiKey = process.env.RESEND_API_KEY;
+
+    if (!resendApiKey) {
+      console.warn('[v0] RESEND_API_KEY not configured');
+    }
 
     try {
+      console.log('[v0] Sending email to:', email);
+      console.log('[v0] Resend API Key exists:', !!resendApiKey);
+      
       const emailResponse = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+          'Authorization': `Bearer ${resendApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: 'noreply.forms@hamduk.com.ng',
+          from: 'noreply@forms.hamduk.com.ng',
           to: email,
           subject: `Join ${org?.name || 'Hamduk Forms'} on Hamduk Forms`,
           html: `
@@ -147,12 +155,16 @@ export async function POST(request: NextRequest) {
         }),
       });
 
+      const emailData = await emailResponse.json();
+      console.log('[v0] Resend response status:', emailResponse.status);
+      console.log('[v0] Resend response:', emailData);
+
       if (!emailResponse.ok) {
-        console.error('Resend API error:', await emailResponse.json());
+        console.error('Resend API error:', emailData);
       }
-    } catch (emailError) {
-      console.error('Error sending invitation email:', emailError);
-      // Don't fail the request if email fails
+    } catch (emailError: any) {
+      console.error('[v0] Error sending invitation email:', emailError.message);
+      // Don't fail the request if email fails, but log it
     }
 
     return NextResponse.json(
@@ -179,9 +191,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
+    const authToken = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.admin.getUserById(authToken);
 
     if (authError || !user) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });

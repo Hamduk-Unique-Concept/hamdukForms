@@ -55,42 +55,15 @@ export default function UpgradePage() {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleUpgrade = async (plan: typeof PLANS[0]) => {
+  const handleUpgrade = (plan: typeof PLANS[0]) => {
     if (plan.price === 0) {
-      alert('You are already on a plan. Select a paid plan to upgrade.');
+      alert('You are already on the Free plan. Select a paid plan to upgrade.');
       return;
     }
 
-    setLoading(true);
-    try {
-      const authToken = localStorage.getItem('authToken') || '';
-      const organizationId = localStorage.getItem('organizationId') || '';
-
-      // Initialize Paystack payment
-      const response = await fetch('/api/payments/initialize', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({
-          planType: plan.name.toLowerCase(),
-          amount: plan.price,
-          organizationId,
-        }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message);
-
-      // Redirect to Paystack payment page
-      window.location.href = data.authorizationUrl;
-    } catch (error: any) {
-      console.error('Upgrade error:', error);
-      alert(error.message || 'Failed to initiate payment');
-    } finally {
-      setLoading(false);
-    }
+    // Redirect to checkout page with plan ID
+    const planId = plan.name.toLowerCase() === 'pro' ? 'professional' : plan.name.toLowerCase();
+    window.location.href = `/dashboard/checkout?plan=${planId}`;
   };
 
   return (

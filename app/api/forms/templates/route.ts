@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('form_templates')
-      .select('*')
+      .select('id, name, description, category, thumbnail_url, is_published, is_featured, created_at, form_structure')
       .eq('is_published', true);
 
     if (category) {
@@ -30,16 +30,19 @@ export async function GET(request: NextRequest) {
       ascending: false,
     });
 
-    if (error) throw error;
+    if (error) {
+      console.error('[v0] Template fetch error:', error);
+      throw error;
+    }
 
     return NextResponse.json(
-      { templates },
+      { templates: templates || [] },
       { status: 200 }
     );
-  } catch (error) {
-    console.error('Templates fetch error:', error);
+  } catch (error: any) {
+    console.error('Templates fetch error:', error.message);
     return NextResponse.json(
-      { message: 'Failed to fetch templates' },
+      { message: 'Failed to fetch templates', error: error.message },
       { status: 500 }
     );
   }
@@ -53,11 +56,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.admin.getUserById(token);
 
     if (authError || !user) {
+      console.log('[v0] Auth error in template POST:', authError);
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
