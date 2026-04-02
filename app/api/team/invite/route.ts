@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate invitation token
-    const token = crypto.randomBytes(32).toString('hex');
+    const invitationToken = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
     // Create invitation record
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
         organization_id: organizationId,
         email,
         role,
-        token,
+        token: invitationToken,
         status: 'pending',
         expires_at: expiresAt,
         invited_by: user.id,
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     // Send invitation email via Resend
-    const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL}/auth/accept-invite?token=${token}`;
+    const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL}/auth/accept-invite?token=${invitationToken}`;
     const resendApiKey = process.env.RESEND_API_KEY;
 
     if (!resendApiKey) {
