@@ -1,0 +1,10 @@
+{
+  "associatedApplications": [
+    {
+      "applicationId": "YOUR_MICROSOFT_APP_ID_HERE",
+      "certificateList": [
+        "YOUR_CERTIFICATE_FINGERPRINT_HERE"
+      ]
+    }
+  ]
+}
