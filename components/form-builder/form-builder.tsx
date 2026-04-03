@@ -11,7 +11,10 @@ import FormCanvas from './form-canvas';
 import FieldOptionsEditor from './field-options-editor';
 import ConditionalLogicEditor from './conditional-logic-editor';
 import FieldValidationEditor from './field-validation-editor';
-import { Copy, Link as LinkIcon, Globe } from 'lucide-react';
+import FormSettingsAdvanced from './form-settings-advanced';
+import AnalyticsDashboard from './analytics-dashboard';
+import ResponseManager from './response-manager';
+import { Copy, Link as LinkIcon, Globe, Settings, BarChart3, MessageSquare } from 'lucide-react';
 
 interface FormBuilderProps {
   formName: string;
@@ -28,6 +31,8 @@ export default function FormBuilder({ formName, formType, formId }: FormBuilderP
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
   const [isPublished, setIsPublished] = useState(false);
+  const [activeTab, setActiveTab] = useState<'build' | 'settings' | 'analytics' | 'responses'>('build');
+  const [formSettings, setFormSettings] = useState<any>({});
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const addField = (fieldType: string) => {
