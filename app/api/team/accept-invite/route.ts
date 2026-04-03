@@ -53,14 +53,16 @@ export async function POST(request: NextRequest) {
       .eq('id', invitation.organization_id)
       .single();
 
-    // Check if user exists with this email
-    const { data: { user }, error: authError } = await supabase.auth.admin.getUserByEmail(
-      invitation.email
-    );
+    // FIXED: getUserByEmail doesn't exist — query user_profiles instead
+    const { data: existingProfile } = await supabase
+      .from('user_profiles')
+      .select('id')
+      .eq('email', invitation.email)
+      .single();
 
-    let userId = user?.id;
+    let userId = existingProfile?.id;
 
-    if (!user) {
+    if (!existingProfile) {
       // Create a new user account with the invitation email
       const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
         email: invitation.email,
