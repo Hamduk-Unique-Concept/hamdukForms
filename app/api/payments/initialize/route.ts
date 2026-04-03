@@ -13,74 +13,79 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = authHeader.replace('Bearer ', '');
-    const { planType, amount, organizationId } = await request.json();
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
-    if (!planType || !amount || !organizationId) {
+    if (authError || !user) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { checkoutId, amount } = await request.json();
+
+    if (!checkoutId || !amount) {
       return NextResponse.json(
-        { message: 'Missing required fields' },
+        { message: 'Missing checkoutId or amount' },
         { status: 400 }
       );
     }
 
-    // Get user email
-    const { data: { user }, error: authError } = await supabase.auth.admin.getUserById(userId);
-    
-    if (authError || !user?.email) {
-      return NextResponse.json({ message: 'User not found' }, { status: 404 });
+    // Verify Paystack credentials
+    if (!process.env.PAYSTACK_SECRET_KEY) {
+      console.error('[v0] PAYSTACK_SECRET_KEY not configured');
+      return NextResponse.json(
+        { message: 'Payment provider not configured' },
+        { status: 500 }
+      );
     }
 
-    // Create transaction record
-    const { data: transaction, error: txError } = await supabase
-      .from('subscriptions')
-      .insert({
-        organization_id: organizationId,
-        user_id: userId,
-        plan_type: planType,
-        amount,
-        currency: 'NGN',
-        status: 'pending',
-        payment_provider: 'paystack',
-      })
-      .select('id')
+    // Get checkout session details
+    const { data: checkoutSession, error: checkoutError } = await supabase
+      .from('checkout_sessions')
+      .select('*')
+      .eq('id', checkoutId)
       .single();
 
-    if (txError) throw txError;
+    if (checkoutError || !checkoutSession) {
+      return NextResponse.json({ message: 'Checkout session not found' }, { status: 404 });
+    }
+
+    console.log('[v0] Initializing Paystack payment for:', checkoutSession.email);
 
     // Initialize Paystack payment
     const paystackResponse = await fetch('https://api.paystack.co/transaction/initialize', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY || ''}`,
+        Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        email: user.email,
-        amount: amount * 100, // Paystack expects amount in kobo
+        email: checkoutSession.email,
+        amount: Math.round(amount * 100), // Paystack expects amount in kobo
         metadata: {
-          transactionId: transaction?.id,
-          planType,
-          organizationId,
+          checkoutId,
+          organizationId: checkoutSession.organization_id,
+          planId: checkoutSession.plan_id,
         },
-        callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/payment/verify?transactionId=${transaction?.id}`,
       }),
     });
 
     const paystackData = await paystackResponse.json();
 
     if (!paystackResponse.ok) {
+      console.error('[v0] Paystack error:', paystackData);
       throw new Error(paystackData.message || 'Failed to initialize payment');
     }
 
-    // Store Paystack reference
-    if (transaction?.id) {
-      await supabase
-        .from('subscriptions')
-        .update({
-          transaction_id: paystackData.data.reference,
-        })
-        .eq('id', transaction.id);
-    }
+    console.log('[v0] Paystack initialized:', paystackData.data.reference);
+
+    // Update checkout session with Paystack reference
+    await supabase
+      .from('checkout_sessions')
+      .update({
+        paystack_reference: paystackData.data.reference,
+        status: 'payment_initiated',
+      })
+      .eq('id', checkoutId);
 
     return NextResponse.json(
       {
@@ -92,7 +97,7 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     );
   } catch (error: any) {
-    console.error('Payment initialization error:', error);
+    console.error('[v0] Payment initialization error:', error);
     return NextResponse.json(
       { message: error.message || 'Failed to initialize payment' },
       { status: 500 }

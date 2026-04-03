@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Unauthorized', error: authError?.message }, { status: 401 });
     }
 
-    const {
+    let {
       formId,
       organizationId,
       title,
@@ -35,6 +35,24 @@ export async function POST(request: NextRequest) {
       themeConfig,
       brandingConfig,
     } = await request.json();
+
+    // If no organizationId, get user's default organization
+    if (!organizationId || organizationId === '') {
+      const { data: userOrg, error: orgError } = await supabase
+        .from('organizations')
+        .select('id')
+        .eq('owner_id', user.id)
+        .limit(1)
+        .single();
+
+      if (orgError || !userOrg) {
+        console.log('[v0] Error fetching default org:', orgError);
+        return NextResponse.json({ message: 'No organization found. Please create one first.' }, { status: 400 });
+      }
+
+      organizationId = userOrg.id;
+      console.log('[v0] Using default organization:', organizationId);
+    }
 
     // Check if form exists
     const { data: existingForm, error: fetchError } = await supabase
