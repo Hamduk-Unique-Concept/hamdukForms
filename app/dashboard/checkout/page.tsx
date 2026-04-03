@@ -19,6 +19,9 @@ export default function CheckoutPage() {
   const searchParams = useSearchParams();
   const planId = (searchParams.get('plan') || 'starter') as keyof typeof PLANS;
   const [loading, setLoading] = useState(false);
+  const [promoCode, setPromoCode] = useState('');
+  const [discount, setDiscount] = useState(0);
+  const [finalAmount, setFinalAmount] = useState(PLANS[planId]?.amount || 0);
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -27,6 +30,7 @@ export default function CheckoutPage() {
   });
 
   const plan = PLANS[planId] || PLANS.starter;
+  const originalAmount = plan.amount;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -46,8 +50,6 @@ export default function CheckoutPage() {
 
     setLoading(true);
     try {
-      const organizationId = localStorage.getItem('organizationId') || '';
-
       // Save checkout info first
       const checkoutResponse = await fetch('/api/checkout/save', {
         method: 'POST',
@@ -57,16 +59,23 @@ export default function CheckoutPage() {
         },
         body: JSON.stringify({
           planId,
-          organizationId,
-          ...formData,
+          fullName: formData.fullName,
+          email: formData.email,
+          phone: formData.phone,
+          company: formData.company,
+          promoCode: promoCode || undefined,
         }),
       });
 
+      const checkoutData = await checkoutResponse.json();
       if (!checkoutResponse.ok) {
-        throw new Error('Failed to save checkout info');
+        throw new Error(checkoutData.message || 'Failed to save checkout info');
       }
 
-      // Then initialize payment
+      console.log('[v0] Checkout saved:', checkoutData);
+      const checkoutId = checkoutData.checkoutId;
+
+      // Then initialize payment with the amount from checkout
       const paymentResponse = await fetch('/api/payments/initialize', {
         method: 'POST',
         headers: {
@@ -74,10 +83,8 @@ export default function CheckoutPage() {
           'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          planType: planId,
-          amount: plan.amount,
-          organizationId,
-          email: formData.email,
+          checkoutId,
+          amount: checkoutData.amount || finalAmount,
         }),
       });
 
@@ -86,12 +93,16 @@ export default function CheckoutPage() {
         throw new Error(paymentData.message || 'Payment initialization failed');
       }
 
+      console.log('[v0] Payment initialized:', paymentData);
+
       // Redirect to Paystack payment gateway
       if (paymentData.authorizationUrl) {
         window.location.href = paymentData.authorizationUrl;
+      } else {
+        throw new Error('No payment URL returned');
       }
     } catch (error: any) {
-      console.error('Checkout error:', error);
+      console.error('[v0] Checkout error:', error);
       alert(error.message || 'Error processing checkout');
     } finally {
       setLoading(false);
@@ -176,6 +187,19 @@ export default function CheckoutPage() {
                   disabled={loading}
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Promo Code (Optional)
+                </label>
+                <Input
+                  type="text"
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                  placeholder="Enter promo code"
+                  disabled={loading}
+                />
+              </div>
             </div>
           </div>
 
@@ -199,15 +223,21 @@ export default function CheckoutPage() {
             <div className="space-y-3 mb-6 pb-6 border-b">
               <div className="flex justify-between text-gray-700">
                 <span>Subtotal</span>
-                <span>₦{plan.amount.toLocaleString()}</span>
+                <span>₦{originalAmount.toLocaleString()}</span>
               </div>
+              {discount > 0 && (
+                <div className="flex justify-between text-green-600 font-medium">
+                  <span>Discount</span>
+                  <span>-₦{discount.toLocaleString()}</span>
+                </div>
+              )}
               <div className="flex justify-between text-gray-700">
                 <span>Tax (7.5%)</span>
-                <span>₦{Math.round(plan.amount * 0.075).toLocaleString()}</span>
+                <span>₦{Math.round((originalAmount - discount) * 0.075).toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-lg font-bold text-gray-900">
                 <span>Total</span>
-                <span>₦{Math.round(plan.amount * 1.075).toLocaleString()}</span>
+                <span>₦{Math.round((originalAmount - discount) * 1.075).toLocaleString()}</span>
               </div>
             </div>
 
