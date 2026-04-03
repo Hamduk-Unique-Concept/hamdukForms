@@ -4,17 +4,13 @@ import { useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/app/providers';
 import FieldPalette from './field-palette';
 import FormCanvas from './form-canvas';
 import FieldOptionsEditor from './field-options-editor';
 import ConditionalLogicEditor from './conditional-logic-editor';
 import FieldValidationEditor from './field-validation-editor';
-import FormSettingsAdvanced from './form-settings-advanced';
-import AnalyticsDashboard from './analytics-dashboard';
-import ResponseManager from './response-manager';
-import { Copy, Link as LinkIcon, Globe, Settings, BarChart3, MessageSquare } from 'lucide-react';
+import { Copy, Globe } from 'lucide-react';
 
 interface FormBuilderProps {
   formName: string;
@@ -22,7 +18,7 @@ interface FormBuilderProps {
   formId?: string;
 }
 
-export default function FormBuilder({ formName, formType, formId }: FormBuilderProps) {
+export default function FormBuilder({ formName, formType, formId: initialFormId }: FormBuilderProps) {
   const router = useRouter();
   const { session } = useAuth();
   const [fields, setFields] = useState<any[]>([]);
@@ -31,9 +27,10 @@ export default function FormBuilder({ formName, formType, formId }: FormBuilderP
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
   const [isPublished, setIsPublished] = useState(false);
-  const [activeTab, setActiveTab] = useState<'build' | 'settings' | 'analytics' | 'responses'>('build');
   const [formSettings, setFormSettings] = useState<any>({});
-  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Track the saved formId in state so it persists after first save
+  const [savedFormId, setSavedFormId] = useState<string | null>(initialFormId || null);
 
   const addField = (fieldType: string) => {
     const newField = {
@@ -59,28 +56,26 @@ export default function FormBuilder({ formName, formType, formId }: FormBuilderP
 
   const removeField = (fieldId: string) => {
     setFields(fields.filter(f => f.id !== fieldId));
-    if (selectedFieldId === fieldId) {
-      setSelectedFieldId(null);
-    }
+    if (selectedFieldId === fieldId) setSelectedFieldId(null);
   };
 
   const reorderFields = (startIndex: number, endIndex: number) => {
     const result = Array.from(fields);
     const [removed] = result.splice(startIndex, 1);
     result.splice(endIndex, 0, removed);
-    const reordered = result.map((f, i) => ({ ...f, order: i }));
-    setFields(reordered);
+    setFields(result.map((f, i) => ({ ...f, order: i })));
   };
 
-  const handleSaveForm = useCallback(async () => {
+  // Returns the saved formId so handlePublishForm can use it immediately
+  const handleSaveForm = useCallback(async (): Promise<string | null> => {
     if (!formName.trim() || fields.length === 0) {
       alert('Please provide a form name and at least one field');
-      return;
+      return null;
     }
 
     if (!session?.access_token) {
       alert('You must be logged in to save forms');
-      return;
+      return null;
     }
 
     setIsSaving(true);
@@ -94,7 +89,7 @@ export default function FormBuilder({ formName, formType, formId }: FormBuilderP
           'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          formId: formId || `form-${Date.now()}`,
+          formId: savedFormId || null, // ← null for new forms, not a fake UUID
           organizationId,
           title: formName,
           description: '',
@@ -117,21 +112,22 @@ export default function FormBuilder({ formName, formType, formId }: FormBuilderP
       const data = await response.json();
       if (!response.ok) throw new Error(data.message);
 
+      const returnedId = data.formId;
+      setSavedFormId(returnedId); // ← store it in state for subsequent saves/publish
       alert('Form saved successfully!');
-      if (!formId) {
-        router.push(`/dashboard/forms/${data.formId}`);
-      }
+      return returnedId;
     } catch (error: any) {
       console.error('Error saving form:', error);
       alert(error.message || 'Error saving form');
+      return null;
     } finally {
       setIsSaving(false);
     }
-  }, [formName, fields, formId, router]);
+  }, [formName, fields, savedFormId, session, formType]);
 
   const handlePublishForm = useCallback(async () => {
     if (!formName.trim() || fields.length === 0) {
-      alert('Please save the form first');
+      alert('Please add at least one field before publishing');
       return;
     }
 
@@ -142,12 +138,11 @@ export default function FormBuilder({ formName, formType, formId }: FormBuilderP
 
     setIsPublishing(true);
     try {
-      // First save the form
-      await handleSaveForm();
+      // Save first and get the formId back directly from the return value
+      const currentFormId = await handleSaveForm();
 
-      // Then publish it
-      if (!formId) {
-        throw new Error('Form must be saved before publishing');
+      if (!currentFormId) {
+        throw new Error('Form could not be saved. Please try again.');
       }
 
       const response = await fetch('/api/forms/publish', {
@@ -157,7 +152,7 @@ export default function FormBuilder({ formName, formType, formId }: FormBuilderP
           'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          formId,
+          formId: currentFormId, // ← guaranteed to be a real ID now
           action: 'publish',
         }),
       });
@@ -165,19 +160,26 @@ export default function FormBuilder({ formName, formType, formId }: FormBuilderP
       const data = await response.json();
       if (!response.ok) throw new Error(data.message);
 
-      console.log('[v0] Publish response:', data);
       setIsPublished(true);
       setPublishedUrl(data.publishableUrl);
       alert(`Form published! Share link: ${data.publishableUrl}`);
+
+      // Navigate to form detail page
+      router.push(`/dashboard/forms/${currentFormId}`);
     } catch (error: any) {
       console.error('Error publishing form:', error);
       alert(error.message || 'Error publishing form');
     } finally {
       setIsPublishing(false);
     }
-  }, [formName, fields, formId, handleSaveForm]);
+  }, [formName, fields, handleSaveForm, session]);
 
   const handleUnpublishForm = useCallback(async () => {
+    if (!savedFormId) {
+      alert('No published form found');
+      return;
+    }
+
     if (!session?.access_token) {
       alert('You must be logged in to unpublish forms');
       return;
@@ -192,7 +194,7 @@ export default function FormBuilder({ formName, formType, formId }: FormBuilderP
           'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          formId,
+          formId: savedFormId,
           action: 'unpublish',
         }),
       });
@@ -209,7 +211,7 @@ export default function FormBuilder({ formName, formType, formId }: FormBuilderP
     } finally {
       setIsPublishing(false);
     }
-  }, [formId]);
+  }, [savedFormId, session]);
 
   const selectedField = fields.find(f => f.id === selectedFieldId);
 
