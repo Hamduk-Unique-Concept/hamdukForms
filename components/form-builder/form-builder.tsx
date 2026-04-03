@@ -141,6 +141,10 @@ export default function FormBuilder({ formName, formType, formId }: FormBuilderP
       await handleSaveForm();
 
       // Then publish it
+      if (!formId) {
+        throw new Error('Form must be saved before publishing');
+      }
+
       const response = await fetch('/api/forms/publish', {
         method: 'POST',
         headers: {
@@ -148,16 +152,18 @@ export default function FormBuilder({ formName, formType, formId }: FormBuilderP
           'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          formId: formId || `form-${Date.now()}`,
+          formId,
+          action: 'publish',
         }),
       });
 
       const data = await response.json();
       if (!response.ok) throw new Error(data.message);
 
+      console.log('[v0] Publish response:', data);
       setIsPublished(true);
-      setPublishedUrl(data.publishLink);
-      alert('Form published successfully!');
+      setPublishedUrl(data.publishableUrl);
+      alert(`Form published! Share link: ${data.publishableUrl}`);
     } catch (error: any) {
       console.error('Error publishing form:', error);
       alert(error.message || 'Error publishing form');
@@ -175,13 +181,14 @@ export default function FormBuilder({ formName, formType, formId }: FormBuilderP
     setIsPublishing(true);
     try {
       const response = await fetch('/api/forms/publish', {
-        method: 'DELETE',
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           formId,
+          action: 'unpublish',
         }),
       });
 

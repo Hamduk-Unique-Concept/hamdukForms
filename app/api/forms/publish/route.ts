@@ -21,7 +21,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Unauthorized', error: authError?.message }, { status: 401 });
     }
 
-    const { formId, organizationId, action } = await request.json();
+    const { formId, action } = await request.json();
+
+    if (!formId || !action) {
+      return NextResponse.json(
+        { message: 'formId and action are required' },
+        { status: 400 }
+      );
+    }
 
     if (!['publish', 'unpublish'].includes(action)) {
       return NextResponse.json(
@@ -30,18 +37,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify user has access to this form
+    // Get form and verify user has access
     const { data: form, error: fetchError } = await supabase
       .from('forms')
-      .select('id')
+      .select('id, organization_id')
       .eq('id', formId)
-      .eq('organization_id', organizationId)
       .single();
 
     if (fetchError || !form) {
       return NextResponse.json(
         { message: 'Form not found' },
         { status: 404 }
+      );
+    }
+
+    // Verify user has access to the organization
+    const { data: hasAccess } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('id', form.organization_id)
+      .eq('owner_id', user.id)
+      .single();
+
+    const { data: isMember } = await supabase
+      .from('user_organizations')
+      .select('id')
+      .eq('organization_id', form.organization_id)
+      .eq('user_id', user.id)
+      .single();
+
+    if (!hasAccess && !isMember) {
+      return NextResponse.json(
+        { message: 'You do not have access to this form' },
+        { status: 403 }
       );
     }
 
