@@ -1,5 +1,4 @@
 'use client';
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/lib/auth';
 import type { User, Session } from '@supabase/supabase-js';
@@ -18,6 +17,22 @@ const AuthContext = createContext<AuthContextType>({
   error: null,
 });
 
+async function fetchAndStoreOrg(userId: string) {
+  try {
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('owner_id', userId)
+      .single();
+
+    if (org?.id) {
+      localStorage.setItem('organizationId', org.id);
+    }
+  } catch (err) {
+    console.error('Failed to fetch organization:', err);
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -32,6 +47,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         setSession(session);
         setUser(session?.user ?? null);
+
+        // Store org on initial load if user is already logged in
+        if (session?.user) {
+          fetchAndStoreOrg(session.user.id);
+        }
       }
       setLoading(false);
     });
@@ -43,6 +63,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       setError(null);
+
+      // Store org on sign in, clear on sign out
+      if (event === 'SIGNED_IN' && session?.user) {
+        fetchAndStoreOrg(session.user.id);
+      } else if (event === 'SIGNED_OUT') {
+        localStorage.removeItem('organizationId');
+      }
     });
 
     return () => {
