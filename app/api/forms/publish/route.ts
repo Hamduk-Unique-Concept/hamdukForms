@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update publish status
+    // Update publish status on forms table
     const isPublished = action === 'publish';
     const { error: updateError } = await supabase
       .from('forms')
@@ -87,23 +87,55 @@ export async function POST(request: NextRequest) {
 
     if (updateError) throw updateError;
 
-    // Get publishable URL
+    // Get form slug for publish link
     const { data: updatedForm } = await supabase
       .from('forms')
       .select('slug')
       .eq('id', formId)
       .single();
 
-    const publishableUrl = isPublished
-      ? `${process.env.NEXT_PUBLIC_APP_URL}/forms/${updatedForm?.slug}`
-      : null;
+    const formSlug = updatedForm?.slug;
+    const publicUrl = `${process.env.NEXT_PUBLIC_APP_URL}/forms/${formSlug}`;
+
+    if (isPublished) {
+      // Check if a publish link already exists
+      const { data: existingLink } = await supabase
+        .from('form_publish_links')
+        .select('id')
+        .eq('form_id', formId)
+        .single();
+
+      if (!existingLink) {
+        const { error: linkError } = await supabase
+          .from('form_publish_links')
+          .insert({
+            form_id: formId,
+            publish_slug: formSlug,
+            public_url: publicUrl,
+            is_published: true,
+            published_at: new Date(),
+          });
+
+        if (linkError) throw linkError;
+      } else {
+        await supabase
+          .from('form_publish_links')
+          .update({ is_published: true, published_at: new Date(), public_url: publicUrl })
+          .eq('form_id', formId);
+      }
+    } else {
+      await supabase
+        .from('form_publish_links')
+        .update({ is_published: false })
+        .eq('form_id', formId);
+    }
 
     return NextResponse.json(
       {
         message: `Form ${action}ed successfully`,
         formId,
         isPublished,
-        publishableUrl,
+        publishableUrl: isPublished ? publicUrl : null,
       },
       { status: 200 }
     );
