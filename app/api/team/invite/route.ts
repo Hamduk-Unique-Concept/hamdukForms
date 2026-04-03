@@ -22,24 +22,50 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Unauthorized', error: authError?.message }, { status: 401 });
     }
 
-    const { organizationId, email, role = 'editor' } = await request.json();
+    let { organizationId, email, role = 'member' } = await request.json();
 
-    if (!organizationId || !email) {
+    if (!email) {
       return NextResponse.json(
-        { message: 'Organization ID and email are required' },
+        { message: 'Email is required' },
         { status: 400 }
       );
     }
 
-    // Verify user is part of the organization
-    const { data: orgMember } = await supabase
-      .from('organization_members')
+    // If no organizationId provided, get user's default organization
+    if (!organizationId) {
+      const { data: userOrg } = await supabase
+        .from('organizations')
+        .select('id')
+        .eq('owner_id', user.id)
+        .limit(1)
+        .single();
+
+      if (!userOrg) {
+        return NextResponse.json(
+          { message: 'No organization found. Please create one first.' },
+          { status: 400 }
+        );
+      }
+
+      organizationId = userOrg.id;
+    }
+
+    // Verify user has access to this organization (either owner or member)
+    const { data: isOwner } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('id', organizationId)
+      .eq('owner_id', user.id)
+      .single();
+
+    const { data: isMember } = await supabase
+      .from('user_organizations')
       .select('id')
       .eq('organization_id', organizationId)
       .eq('user_id', user.id)
       .single();
 
-    if (!orgMember) {
+    if (!isOwner && !isMember) {
       return NextResponse.json(
         { message: 'You do not have access to this organization' },
         { status: 403 }
