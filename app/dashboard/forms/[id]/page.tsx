@@ -5,11 +5,11 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/app/providers';
-import { Copy, Share2, Eye, Loader2, Trash2, Files } from 'lucide-react';
+import { Copy, Eye, Loader2, Trash2, Files } from 'lucide-react';
 
 interface FormData {
   id: string;
-  title: string;
+  name: string;
   slug: string;
   description: string;
   is_published: boolean;
@@ -28,7 +28,7 @@ export default function FormDetailPage({ params }: { params: { id: string } }) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    if (session?.access_token) {
+    if (session?.access_token && params.id) {
       fetchForm();
     }
   }, [session?.access_token, params.id]);
@@ -47,9 +47,14 @@ export default function FormDetailPage({ params }: { params: { id: string } }) {
 
       const data = await response.json();
       setForm(data.form);
-      
+
+      // Fetch the actual publish link if published
       if (data.form.is_published) {
-        setShareUrl(`${process.env.NEXT_PUBLIC_APP_URL}/forms/${data.form.slug}`);
+        const publishRes = await fetch(`/api/forms/publish?formId=${data.form.id}`);
+        const publishData = await publishRes.json();
+        if (publishData.publishableUrl) {
+          setShareUrl(publishData.publishableUrl);
+        }
       }
     } catch (error: any) {
       console.error('[v0] Error fetching form:', error);
@@ -70,10 +75,7 @@ export default function FormDetailPage({ params }: { params: { id: string } }) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session?.access_token}`,
         },
-        body: JSON.stringify({
-          formId: form.id,
-          action: 'publish',
-        }),
+        body: JSON.stringify({ formId: form.id, action: 'publish' }),
       });
 
       const data = await response.json();
@@ -100,10 +102,7 @@ export default function FormDetailPage({ params }: { params: { id: string } }) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session?.access_token}`,
         },
-        body: JSON.stringify({
-          formId: form.id,
-          action: 'unpublish',
-        }),
+        body: JSON.stringify({ formId: form.id, action: 'unpublish' }),
       });
 
       const data = await response.json();
@@ -138,9 +137,7 @@ export default function FormDetailPage({ params }: { params: { id: string } }) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session?.access_token}`,
         },
-        body: JSON.stringify({
-          formId: form.id,
-        }),
+        body: JSON.stringify({ formId: form.id }),
       });
 
       const data = await response.json();
@@ -158,7 +155,6 @@ export default function FormDetailPage({ params }: { params: { id: string } }) {
 
   const handleDelete = async () => {
     if (!form || !confirm('Are you sure you want to delete this form?')) return;
-
     setActionLoading(true);
     try {
       const response = await fetch(`/api/forms/${form.id}`, {
@@ -203,7 +199,7 @@ export default function FormDetailPage({ params }: { params: { id: string } }) {
         <Link href="/dashboard/forms" className="text-primary hover:underline mb-4 inline-block">
           ← Back to Forms
         </Link>
-        <h1 className="text-3xl font-bold">{form.title}</h1>
+        <h1 className="text-3xl font-bold">{form.name || 'Untitled Form'}</h1>
         <p className="text-gray-600 mt-1">{form.description || 'No description'}</p>
       </div>
 
@@ -217,11 +213,15 @@ export default function FormDetailPage({ params }: { params: { id: string } }) {
         </div>
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-sm text-gray-600 font-medium">Created</h3>
-          <p className="text-lg font-medium mt-2">{new Date(form.created_at).toLocaleDateString()}</p>
+          <p className="text-lg font-medium mt-2">
+            {new Date(form.created_at).toLocaleDateString()}
+          </p>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-sm text-gray-600 font-medium">Last Updated</h3>
-          <p className="text-lg font-medium mt-2">{new Date(form.updated_at).toLocaleDateString()}</p>
+          <p className="text-lg font-medium mt-2">
+            {new Date(form.updated_at).toLocaleDateString()}
+          </p>
         </div>
       </div>
 
@@ -256,9 +256,9 @@ export default function FormDetailPage({ params }: { params: { id: string } }) {
               Edit Form
             </Button>
           </Link>
-          
+
           <Link href={`/forms/${form.slug}`} target="_blank">
-            <Button className="w-full" variant="outline" className="gap-2">
+            <Button className="w-full gap-2" variant="outline">
               <Eye className="w-4 h-4" />
               Preview
             </Button>
