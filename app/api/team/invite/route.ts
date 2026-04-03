@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
     try {
       console.log('[v0] Sending email to:', email);
       console.log('[v0] Resend API Key exists:', !!resendApiKey);
-      
+
       const emailResponse = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: 'noreply@forms.hamduk.com.ng',
+          from: 'forms.noreply@hamduk.com.ng',
           to: email,
           subject: `Join ${org?.name || 'Hamduk Forms'} on Hamduk Forms`,
           html: `
@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { 
+      {
         message: 'Invitation sent successfully',
         invitationId: invitation.id,
       },
@@ -257,7 +257,7 @@ export async function GET(request: NextRequest) {
       .eq('status', 'pending');
 
     return NextResponse.json(
-      { 
+      {
         members: members || [],
         pendingInvitations: invitations || [],
       },
