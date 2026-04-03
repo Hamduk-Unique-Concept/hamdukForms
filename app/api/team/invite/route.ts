@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
     const { data: inviterProfile } = await supabase
       .from('user_profiles')
       .select('full_name')
-      .eq('user_id', user.id)
+      .eq('id', user.id) // ← FIXED: was .eq('user_id', user.id)
       .single();
 
     // Send invitation email via Resend
