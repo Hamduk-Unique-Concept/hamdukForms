@@ -1,6 +1,3 @@
-import nodemailer from 'nodemailer';
-import { render } from '@react-email/render';
-
 interface EmailOptions {
   to: string;
   subject: string;
@@ -9,44 +6,30 @@ interface EmailOptions {
   replyTo?: string;
 }
 
-// Initialize transporter (using environment variables for configuration)
-const getTransporter = () => {
-  const emailProvider = process.env.EMAIL_PROVIDER || 'smtp';
-  
-  if (emailProvider === 'sendgrid') {
-    return nodemailer.createTransport({
-      host: 'smtp.sendgrid.net',
-      port: 587,
-      auth: {
-        user: 'apikey',
-        pass: process.env.SENDGRID_API_KEY || '',
-      },
-    });
-  }
-
-  // Default SMTP configuration
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT || '587'),
-    secure: process.env.SMTP_SECURE === 'true',
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASSWORD,
-    },
-  });
-};
+const DEFAULT_FROM = 'forms.noreply@hamduk.com.ng';
 
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
   try {
-    const transporter = getTransporter();
-    
-    await transporter.sendMail({
-      from: options.from || process.env.EMAIL_FROM || 'noreply@hamdukforms.com',
-      to: options.to,
-      subject: options.subject,
-      html: options.html,
-      replyTo: options.replyTo,
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: options.from || DEFAULT_FROM,
+        to: options.to,
+        subject: options.subject,
+        html: options.html,
+        reply_to: options.replyTo,
+      }),
     });
+
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('Resend API error:', error);
+      return false;
+    }
 
     return true;
   } catch (error) {
