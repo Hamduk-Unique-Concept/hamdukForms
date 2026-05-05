@@ -529,7 +529,179 @@ export default function FormCanvas({
               {field.required && <span className="text-red-500">*</span>}
             </label>
             <div className="bg-gray-100 rounded-lg aspect-video flex items-center justify-center">
-              <span className="text-gray-500">🎯 Embed block (video, map, etc.)</span>
+              <span className="text-gray-500">Embed block (video, map, etc.)</span>
+            </div>
+          </div>
+        );
+      case 'payment':
+        return (
+          <div key={field.id} className={baseClass} onClick={() => onFieldSelect(field.id)}>
+            <label className="block text-sm font-medium mb-2">
+              {field.label}
+              {field.required && <span className="text-red-500">*</span>}
+            </label>
+            <div className="border border-gray-300 rounded-lg p-4 bg-blue-50">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium">Amount</span>
+                <span className="text-lg">₦</span>
+              </div>
+              <Input type="number" placeholder="0.00" disabled className="mb-2" />
+              <select disabled className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                <option>Paystack</option>
+                <option>Flutterwave</option>
+                <option>PayPal</option>
+              </select>
+            </div>
+          </div>
+        );
+      case 'product':
+        return (
+          <div key={field.id} className={baseClass} onClick={() => onFieldSelect(field.id)}>
+            <label className="block text-sm font-medium mb-2">
+              {field.label}
+              {field.required && <span className="text-red-500">*</span>}
+            </label>
+            <div className="space-y-2">
+              <div className="flex items-center gap-3 p-3 border border-gray-300 rounded-lg hover:bg-gray-50">
+                <input type="radio" disabled />
+                <span className="text-sm">Product 1 - ₦5,000</span>
+              </div>
+              <div className="flex items-center gap-3 p-3 border border-gray-300 rounded-lg hover:bg-gray-50">
+                <input type="radio" disabled />
+                <span className="text-sm">Product 2 - ₦10,000</span>
+              </div>
+            </div>
+          </div>
+        );
+      case 'pricing':
+        return (
+          <div key={field.id} className={baseClass} onClick={() => onFieldSelect(field.id)}>
+            <label className="block text-sm font-medium mb-2">
+              {field.label}
+              {field.required && <span className="text-red-500">*</span>}
+            </label>
+            <table className="w-full border border-gray-300 text-sm">
+              <tbody>
+                <tr className="bg-gray-100 border-b">
+                  <th className="p-2 text-left font-medium">Plan</th>
+                  <th className="p-2 text-center">Price</th>
+                  <th className="p-2 text-center">Select</th>
+                </tr>
+                <tr className="border-b">
+                  <td className="p-2">Starter</td>
+                  <td className="p-2 text-center">₦2,000</td>
+                  <td className="p-2 text-center"><input type="radio" disabled /></td>
+                </tr>
+                <tr>
+                  <td className="p-2">Pro</td>
+                  <td className="p-2 text-center">₦5,000</td>
+                  <td className="p-2 text-center"><input type="radio" disabled /></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        );
+      case 'booking':
+        return (
+          <div key={field.id} className={baseClass} onClick={() => onFieldSelect(field.id)}>
+            <label className="block text-sm font-medium mb-2">
+              {field.label}
+              {field.required && <span className="text-red-500">*</span>}
+            </label>
+            <div className="space-y-2">
+              <Input type="date" disabled />
+              <Input type="time" disabled placeholder="Select time" />
+              <select disabled className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                <option>Select duration...</option>
+                <option>30 minutes</option>
+                <option>1 hour</option>
+                <option>2 hours</option>
+              </select>
+            </div>
+          </div>
+        );
+      case 'ticket':
+        return (
+          <div key={field.id} className={baseClass} onClick={() => onFieldSelect(field.id)}>
+            <label className="block text-sm font-medium mb-2">
+              {field.label}
+              {field.required && <span className="text-red-500">*</span>}
+            </label>
+            <div className="space-y-2">
+              <div className="flex items-center gap-3 p-3 border border-gray-300 rounded-lg">
+                <input type="radio" disabled />
+                <span className="text-sm">Early Bird - ₦3,000</span>
+              </div>
+              <div className="flex items-center gap-3 p-3 border border-gray-300 rounded-lg">
+                <input type="radio" disabled />
+                <span className="text-sm">Regular - ₦5,000</span>
+              </div>
+              <div className="flex items-center gap-3 p-3 border border-gray-300 rounded-lg">
+                <input type="radio" disabled />
+                <span className="text-sm">VIP - ₦10,000</span>
+              </div>
+            </div>
+          </div>
+        );
+      case 'inventory':
+        return (
+          <div key={field.id} className={baseClass} onClick={() => onFieldSelect(field.id)}>
+            <label className="block text-sm font-medium mb-2">
+              {field.label}
+              {field.required && <span className="text-red-500">*</span>}
+            </label>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 border border-gray-300 rounded-lg">
+                <div>
+                  <p className="text-sm font-medium">Item 1</p>
+                  <p className="text-xs text-gray-500">Stock: 10 available</p>
+                </div>
+                <Input type="number" min="0" max="10" disabled className="w-16" />
+              </div>
+            </div>
+          </div>
+        );
+      case 'subscription':
+        return (
+          <div key={field.id} className={baseClass} onClick={() => onFieldSelect(field.id)}>
+            <label className="block text-sm font-medium mb-2">
+              {field.label}
+              {field.required && <span className="text-red-500">*</span>}
+            </label>
+            <div className="space-y-2">
+              <div className="flex items-center gap-3 p-3 border border-gray-300 rounded-lg">
+                <input type="radio" disabled />
+                <div className="text-sm">
+                  <p className="font-medium">Monthly - ₦1,000/month</p>
+                  <p className="text-xs text-gray-600">Cancel anytime</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-3 border border-gray-300 rounded-lg">
+                <input type="radio" disabled />
+                <div className="text-sm">
+                  <p className="font-medium">Yearly - ₦10,000/year</p>
+                  <p className="text-xs text-gray-600">Save 20%</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      case 'bundle':
+        return (
+          <div key={field.id} className={baseClass} onClick={() => onFieldSelect(field.id)}>
+            <label className="block text-sm font-medium mb-2">
+              {field.label}
+              {field.required && <span className="text-red-500">*</span>}
+            </label>
+            <div className="space-y-2">
+              <div className="flex items-start gap-3 p-3 border border-gray-300 rounded-lg">
+                <input type="checkbox" disabled />
+                <div className="text-sm flex-1">
+                  <p className="font-medium">Bundle Package</p>
+                  <p className="text-xs text-gray-600">Item 1 + Item 2 + Item 3</p>
+                  <p className="font-semibold mt-1">₦15,000</p>
+                </div>
+              </div>
             </div>
           </div>
         );
