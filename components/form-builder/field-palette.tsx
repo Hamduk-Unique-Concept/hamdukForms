@@ -71,6 +71,17 @@ export default function FieldPalette({ onFieldAdd }: FieldPaletteProps) {
     { type: 'embed', label: 'Embed Block', icon: '🎯' },
   ];
 
+  const paymentFields = [
+    { type: 'payment', label: 'Payment Input', icon: '💳' },
+    { type: 'product', label: 'Product Selector', icon: '🛍️' },
+    { type: 'pricing', label: 'Pricing Table', icon: '📊' },
+    { type: 'booking', label: 'Booking/Appointment', icon: '📅' },
+    { type: 'ticket', label: 'Ticket Selector', icon: '🎫' },
+    { type: 'inventory', label: 'Inventory Selector', icon: '📦' },
+    { type: 'subscription', label: 'Subscription Plans', icon: '🔄' },
+    { type: 'bundle', label: 'Product Bundle', icon: '📚' },
+  ];
+
   const FieldButton = ({ type, label, icon }: any) => (
     <button
       onClick={() => onFieldAdd(type)}
@@ -151,6 +162,15 @@ export default function FieldPalette({ onFieldAdd }: FieldPaletteProps) {
         <h3 className="font-semibold text-xs uppercase text-gray-700 mb-2">Structure</h3>
         <div className="space-y-1">
           {structureFields.map(field => (
+            <FieldButton key={field.type} {...field} />
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <h3 className="font-semibold text-xs uppercase text-gray-700 mb-2">Payments & Commerce</h3>
+        <div className="space-y-1">
+          {paymentFields.map(field => (
             <FieldButton key={field.type} {...field} />
           ))}
         </div>
