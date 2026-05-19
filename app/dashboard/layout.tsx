@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../providers';
 import Sidebar from '@/components/dashboard/sidebar';
 import Header from '@/components/dashboard/header';
+import { UpgradeModalProvider } from '@/lib/billing/upgrade-context';
+import UpgradeModal from '@/components/billing/upgrade-modal';
 
 export default function DashboardLayout({
   children,
@@ -33,14 +35,17 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header />
-        <main className="flex-1 overflow-auto">
-          {children}
-        </main>
+    <UpgradeModalProvider>
+      <div className="flex h-screen bg-gray-100">
+        <Sidebar />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header />
+          <main className="flex-1 overflow-auto">
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+      <UpgradeModal />
+    </UpgradeModalProvider>
   );
 }

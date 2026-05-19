@@ -26,11 +26,13 @@ interface Plan {
 interface PricingTableProps {
   onSelectPlan?: (planId: string, billingCycle: 'monthly' | 'yearly') => void;
   showComparisonTable?: boolean;
+  isModal?: boolean;
 }
 
 export default function PricingTable({
   onSelectPlan,
   showComparisonTable = true,
+  isModal = false,
 }: PricingTableProps) {
   const { user } = useAuth();
   const [plans, setPlans] = useState<Plan[]>([]);
