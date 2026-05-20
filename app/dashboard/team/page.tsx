@@ -138,7 +138,7 @@ function TeamPageContent() {
 
 export default function TeamPage() {
   return (
-    <FeatureGate featureKey="team_members" featureName="Team Collaboration">
+    <FeatureGate featureKey="team_collaboration" featureName="Team Collaboration & Invites">
       <TeamPageContent />
     </FeatureGate>
   );

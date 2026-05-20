@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import FeatureGate from '@/components/billing/feature-gate';
 
-export default function TemplatesPage() {
+function TemplatesPageContent() {
   const templates = [
     {
       id: 'contact',
@@ -96,5 +97,13 @@ export default function TemplatesPage() {
         </Link>
       </div>
     </div>
+  );
+}
+
+export default function TemplatesPage() {
+  return (
+    <FeatureGate featureKey="form_templates" featureName="Form Templates Library">
+      <TemplatesPageContent />
+    </FeatureGate>
   );
 }

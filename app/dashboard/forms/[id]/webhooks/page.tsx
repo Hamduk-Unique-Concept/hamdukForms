@@ -139,7 +139,7 @@ function WebhooksPageContent({ params }: { params: { id: string } }) {
 
 export default function WebhooksPage({ params }: { params: { id: string } }) {
   return (
-    <FeatureGate featureKey="webhooks" featureName="Webhooks">
+    <FeatureGate featureKey="webhooks_api" featureName="Webhooks & API">
       <WebhooksPageContent params={params} />
     </FeatureGate>
   );
