@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Crown, Globe, Users, Zap, Check } from 'lucide-react';
+import FeatureGate from '@/components/billing/feature-gate';
 
 interface EnterprisePlan {
   name: string;
@@ -15,7 +16,7 @@ interface EnterprisePlan {
   current: boolean;
 }
 
-export default function EnterprisePage() {
+function EnterprisePageContent() {
   const [branding, setBranding] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentPlan, setCurrentPlan] = useState<EnterprisePlan | null>(null);
@@ -245,5 +246,13 @@ export default function EnterprisePage() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+export default function EnterprisePage() {
+  return (
+    <FeatureGate featureKey="enterprise" featureName="Enterprise & SSO Features">
+      <EnterprisePageContent />
+    </FeatureGate>
   );
 }

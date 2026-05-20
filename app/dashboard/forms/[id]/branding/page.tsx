@@ -4,8 +4,9 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import BrandingEditor from '@/components/form-builder/branding-editor';
+import FeatureGate from '@/components/billing/feature-gate';
 
-export default function FormBrandingPage({ params }: { params: { id: string } }) {
+function FormBrandingPageContent({ params }: { params: { id: string } }) {
   const [branding, setBranding] = useState({
     backgroundColor: '#FFFFFF',
     textColor: '#000000',
@@ -131,5 +132,13 @@ export default function FormBrandingPage({ params }: { params: { id: string } })
         </div>
       </div>
     </div>
+  );
+}
+
+export default function FormBrandingPage({ params }: { params: { id: string } }) {
+  return (
+    <FeatureGate featureKey="form_branding" featureName="Form Branding & Customization">
+      <FormBrandingPageContent params={params} />
+    </FeatureGate>
   );
 }

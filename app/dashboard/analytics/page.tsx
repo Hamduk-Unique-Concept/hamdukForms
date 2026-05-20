@@ -1,8 +1,9 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import FeatureGate from '@/components/billing/feature-gate';
 
-export default function AnalyticsPage() {
+function AnalyticsPageContent() {
   return (
     <div className="p-8">
       <div className="mb-8">
@@ -35,5 +36,13 @@ export default function AnalyticsPage() {
         <Button>Create Your First Form</Button>
       </div>
     </div>
+  );
+}
+
+export default function AnalyticsPage() {
+  return (
+    <FeatureGate featureKey="advanced_analytics" featureName="Advanced Analytics">
+      <AnalyticsPageContent />
+    </FeatureGate>
   );
 }

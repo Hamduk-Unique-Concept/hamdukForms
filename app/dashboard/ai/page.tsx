@@ -5,8 +5,10 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Sparkles, ArrowRight, Loader2 } from 'lucide-react';
+import FeatureGate from '@/components/billing/feature-gate';
+import AIFormGenerator from '@/components/ai/ai-form-generator';
 
-export default function AIPage() {
+function AIPageContent() {
   const [formDescription, setFormDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [generatedForm, setGeneratedForm] = useState<any>(null);
@@ -63,139 +65,78 @@ export default function AIPage() {
   };
 
   return (
-    <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-3xl font-bold mb-2 flex items-center gap-2">
-          <Sparkles className="w-8 h-8 text-blue-600" />
-          AI Form Generator
-        </h1>
-        <p className="text-gray-600">
-          Describe what kind of form you need, and AI will create it for you in seconds.
-        </p>
+    <div className="p-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-2">AI Form Generator</h1>
+        <p className="text-gray-600">Describe your form and let AI build it for you</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <Card className="p-6">
+          <h2 className="text-xl font-bold mb-4">Describe Your Form</h2>
+          <textarea
+            value={formDescription}
+            onChange={(e) => setFormDescription(e.target.value)}
+            placeholder="E.g., 'Create a customer feedback form with rating, comments, and email'"
+            className="w-full h-32 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <Button
+            onClick={handleGenerateForm}
+            disabled={loading || !formDescription.trim()}
+            className="mt-4 w-full"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Sparkles className="mr-2 h-4 w-4" />
+                Generate Form
+              </>
+            )}
+          </Button>
+        </Card>
+
+        {generatedForm && (
           <Card className="p-6">
-            <label className="block text-sm font-semibold mb-3">
-              Describe Your Form
-            </label>
-            <textarea
-              value={formDescription}
-              onChange={(e) => setFormDescription(e.target.value)}
-              placeholder="E.g., A customer feedback form for restaurants that asks about service quality, food taste, cleanliness, and suggestions for improvement. Include fields for the restaurant name, visit date, and email for follow-up."
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm min-h-32 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent resize-none"
-            />
-            <Button
-              onClick={handleGenerateForm}
-              disabled={loading || !formDescription.trim()}
-              size="lg"
-              className="mt-4 w-full"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  Generate Form
-                </>
-              )}
+            <h2 className="text-xl font-bold mb-4">Generated Form Preview</h2>
+            <div className="space-y-4">
+              <div>
+                <p className="font-semibold">Title</p>
+                <p className="text-gray-600">{generatedForm.title}</p>
+              </div>
+              <div>
+                <p className="font-semibold">Description</p>
+                <p className="text-gray-600">{generatedForm.description}</p>
+              </div>
+              <div>
+                <p className="font-semibold">Fields ({generatedForm.fields.length})</p>
+                <ul className="text-sm text-gray-600 mt-2 space-y-1">
+                  {generatedForm.fields.map((field: any, idx: number) => (
+                    <li key={idx}>
+                      {idx + 1}. {field.label} ({field.type})
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            <Button onClick={handleCreateForm} className="mt-6 w-full">
+              <ArrowRight className="mr-2 h-4 w-4" />
+              Create This Form
             </Button>
           </Card>
-
-          {generatedForm && (
-            <Card className="p-6 border-blue-200 bg-blue-50">
-              <div className="space-y-4">
-                <div>
-                  <h2 className="text-2xl font-bold mb-2">{generatedForm.title}</h2>
-                  <p className="text-gray-700">{generatedForm.description}</p>
-                </div>
-
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-sm">Generated Fields:</h3>
-                  {generatedForm.fields.map((field: any, idx: number) => (
-                    <div
-                      key={idx}
-                      className="p-3 bg-white rounded-lg border border-gray-200"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <p className="font-medium">{field.label}</p>
-                          <p className="text-xs text-gray-500">
-                            Type: {field.type}
-                            {field.required && ' • Required'}
-                          </p>
-                          {field.placeholder && (
-                            <p className="text-xs text-gray-400">
-                              Placeholder: {field.placeholder}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex gap-3 pt-4 border-t">
-                  <Button
-                    variant="outline"
-                    onClick={() => setGeneratedForm(null)}
-                    className="flex-1"
-                  >
-                    Generate Again
-                  </Button>
-                  <Button
-                    onClick={handleCreateForm}
-                    className="flex-1"
-                  >
-                    Create This Form
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          )}
-        </div>
-
-        <div className="space-y-6">
-          <Card className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50">
-            <h3 className="font-semibold mb-4">Tips for Best Results</h3>
-            <ul className="space-y-3 text-sm text-gray-700">
-              <li className="flex gap-2">
-                <span className="text-blue-600 font-bold">1.</span>
-                <span>Be specific about your form's purpose</span>
-              </li>
-              <li className="flex gap-2">
-                <span className="text-blue-600 font-bold">2.</span>
-                <span>Mention key information you want to collect</span>
-              </li>
-              <li className="flex gap-2">
-                <span className="text-blue-600 font-bold">3.</span>
-                <span>Include industry context if relevant</span>
-              </li>
-              <li className="flex gap-2">
-                <span className="text-blue-600 font-bold">4.</span>
-                <span>Specify any validation requirements</span>
-              </li>
-            </ul>
-          </Card>
-
-          <Card className="p-6">
-            <h3 className="font-semibold mb-3">Need Help?</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Our AI form generator uses advanced language models to understand your needs and create the perfect form structure.
-            </p>
-            <Link href="/dashboard/forms">
-              <Button variant="outline" className="w-full">
-                View All Forms
-              </Button>
-            </Link>
-          </Card>
-        </div>
+        )}
       </div>
     </div>
+  );
+}
+
+export default function AIPage() {
+  return (
+    <FeatureGate featureKey="ai_form_generation" featureName="AI Form Generation">
+      <AIPageContent />
+    </FeatureGate>
   );
 }

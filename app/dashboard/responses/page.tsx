@@ -1,8 +1,9 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import FeatureGate from '@/components/billing/feature-gate';
 
-export default function ResponsesPage() {
+function ResponsesPageContent() {
   return (
     <div className="p-8">
       <div className="mb-8">
@@ -19,5 +20,13 @@ export default function ResponsesPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ResponsesPage() {
+  return (
+    <FeatureGate featureKey="response_filtering" featureName="Advanced Response Management">
+      <ResponsesPageContent />
+    </FeatureGate>
   );
 }

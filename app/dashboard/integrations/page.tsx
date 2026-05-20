@@ -1,8 +1,9 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import FeatureGate from '@/components/billing/feature-gate';
 
-export default function IntegrationsPage() {
+function IntegrationsPageContent() {
   const integrations = [
     { name: 'Zapier', icon: '⚡', status: 'available' },
     { name: 'Make', icon: '🔄', status: 'available' },
@@ -43,5 +44,13 @@ export default function IntegrationsPage() {
         <Button variant="outline">Contact Support</Button>
       </div>
     </div>
+  );
+}
+
+export default function IntegrationsPage() {
+  return (
+    <FeatureGate featureKey="integrations" featureName="App Integrations">
+      <IntegrationsPageContent />
+    </FeatureGate>
   );
 }

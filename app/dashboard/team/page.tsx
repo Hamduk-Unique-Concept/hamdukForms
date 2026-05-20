@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/app/providers';
 import { Loader2 } from 'lucide-react';
+import FeatureGate from '@/components/billing/feature-gate';
 
-export default function TeamPage() {
+function TeamPageContent() {
   const { user, session } = useAuth();
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('member');
@@ -132,5 +133,13 @@ export default function TeamPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function TeamPage() {
+  return (
+    <FeatureGate featureKey="team_members" featureName="Team Collaboration">
+      <TeamPageContent />
+    </FeatureGate>
   );
 }

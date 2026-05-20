@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Download, Mail, Eye } from 'lucide-react';
+import FeatureGate from '@/components/billing/feature-gate';
 
 interface Report {
   id: string;
@@ -13,7 +14,7 @@ interface Report {
   status: 'ready' | 'generating';
 }
 
-export default function ReportsPage({ params }: { params: { id: string } }) {
+function ReportsPageContent({ params }: { params: { id: string } }) {
   const [reports, setReports] = useState<Report[]>([
     {
       id: '1',
@@ -198,5 +199,13 @@ export default function ReportsPage({ params }: { params: { id: string } }) {
         <Button variant="outline">Configure Schedule</Button>
       </Card>
     </div>
+  );
+}
+
+export default function ReportsPage({ params }: { params: { id: string } }) {
+  return (
+    <FeatureGate featureKey="form_reports" featureName="Form Reports">
+      <ReportsPageContent params={params} />
+    </FeatureGate>
   );
 }
