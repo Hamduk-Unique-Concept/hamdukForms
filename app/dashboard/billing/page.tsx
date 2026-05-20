@@ -5,6 +5,7 @@ import { useAuth } from '@/app/providers';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { UsageSummary } from '@/components/billing/usage-summary';
+import AddonsSection from '@/components/billing/addons-section';
 import { Loader2, Calendar, AlertTriangle, Download } from 'lucide-react';
 
 interface SubscriptionData {
@@ -223,6 +224,17 @@ export default function BillingPage() {
           </table>
         </div>
       </Card>
+
+      {/* Add-ons Section */}
+      <div className="mt-12">
+        <AddonsSection 
+          organizationId={localStorage.getItem('organizationId') || ''} 
+          onPurchaseComplete={() => {
+            setLoading(true);
+            setTimeout(() => setLoading(false), 1000);
+          }}
+        />
+      </div>
 
       {/* Cancel Subscription Confirmation */}
       {showCancelConfirm && (

@@ -34,10 +34,39 @@ async function handleStripeWebhook(request: NextRequest) {
           return NextResponse.json({ message: 'Missing metadata' }, { status: 400 });
         }
 
-        // Get subscription details
+        // Check if this is an add-on purchase
+        if (session.metadata.is_addon === 'true') {
+          // Handle add-on purchase
+          const { data: userSub } = await supabase
+            .from('user_subscriptions')
+            .select('id')
+            .eq('organization_id', session.metadata.organization_id)
+            .eq('status', 'active')
+            .single();
+
+          if (userSub) {
+            await supabase
+              .from('subscription_addons')
+              .insert({
+                organization_id: session.metadata.organization_id,
+                user_subscription_id: userSub.id,
+                addon_type: session.metadata.addon_type,
+                stripe_line_item_id: session.id,
+                quantity: parseInt(session.metadata.quantity || '1'),
+                unit_price: (session.amount_total || 0) / (parseInt(session.metadata.quantity || '1') * 100),
+                total_price: (session.amount_total || 0) / 100,
+                status: 'active',
+                purchased_at: new Date(),
+              });
+          }
+
+          console.log('[v0] Add-on purchased:', session.metadata.addon_type);
+          break;
+        }
+
+        // Handle main subscription checkout
         const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
 
-        // Update or insert user subscription
         await supabase
           .from('user_subscriptions')
           .upsert({
@@ -56,7 +85,6 @@ async function handleStripeWebhook(request: NextRequest) {
             onConflict: 'organization_id',
           });
 
-        // Record in billing history
         await supabase
           .from('billing_history')
           .insert({
