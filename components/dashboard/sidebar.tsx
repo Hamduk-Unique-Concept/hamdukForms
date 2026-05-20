@@ -14,6 +14,7 @@ export default function Sidebar() {
     { href: '/dashboard/analytics', label: 'Analytics', icon: '📈' },
     { href: '/dashboard/integrations', label: 'Integrations', icon: '🔗' },
     { href: '/dashboard/team', label: 'Team', icon: '👥' },
+    { href: '/dashboard/referrals', label: 'Referrals', icon: '🤝' },
     { href: '/dashboard/settings', label: 'Settings', icon: '⚙️' },
   ];
 
@@ -41,10 +42,21 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="mt-8 pt-8 border-t border-gray-200">
-        <Link href="/dashboard/upgrade" className="block">
+      <div className="mt-auto pt-8 border-t border-gray-200 space-y-3">
+        {/* Upgrade Banner for Free/Starter users */}
+        <div className="bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg p-4 text-white">
+          <p className="text-xs font-semibold mb-2">Unlock Premium Features</p>
+          <p className="text-xs opacity-90 mb-3">Upgrade to Pro to get AI, webhooks, and more</p>
+          <Link href="/pricing" className="block">
+            <button className="w-full px-3 py-1.5 bg-white text-purple-600 text-xs rounded font-semibold hover:bg-gray-100 transition-colors">
+              View Plans
+            </button>
+          </Link>
+        </div>
+
+        <Link href="/dashboard/billing" className="block">
           <button className="w-full px-4 py-2 bg-primary text-white rounded-lg font-semibold hover:bg-primary/90 transition-colors">
-            Upgrade Plan
+            Manage Billing
           </button>
         </Link>
       </div>
