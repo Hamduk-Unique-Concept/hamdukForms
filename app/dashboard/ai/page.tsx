@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Sparkles, ArrowRight, Loader2 } from 'lucide-react';
 import FeatureGate from '@/components/billing/feature-gate';
-import AIFormGenerator from '@/components/ai/ai-form-generator';
 
 function AIPageContent() {
   const [formDescription, setFormDescription] = useState('');

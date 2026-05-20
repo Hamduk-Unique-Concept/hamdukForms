@@ -58,3 +58,5 @@ export function FeatureGate({ featureKey, featureName, children, fallback }: Fea
 
   return <>{children}</>;
 }
+
+export default FeatureGate;
