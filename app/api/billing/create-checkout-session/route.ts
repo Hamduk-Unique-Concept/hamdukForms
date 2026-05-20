@@ -1,13 +1,8 @@
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseClient } from '@/lib/supabase/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { stripe } from '@/lib/billing/stripe';
 import { paystack } from '@/lib/billing/paystack';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-);
 
 const checkoutSessionSchema = z.object({
   plan_id: z.string().uuid(),
@@ -21,6 +16,7 @@ const checkoutSessionSchema = z.object({
 type CheckoutSessionRequest = z.infer<typeof checkoutSessionSchema>;
 
 export async function POST(request: NextRequest) {
+  const supabase = getSupabaseClient();
   try {
     // Get user from auth header
     const authHeader = request.headers.get('Authorization');

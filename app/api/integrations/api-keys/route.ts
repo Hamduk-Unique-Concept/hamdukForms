@@ -1,11 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseClient } from '@/lib/supabase/client';
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 function generateApiKey(): string {
   return 'hdk_' + crypto.randomBytes(32).toString('hex');
@@ -18,6 +13,7 @@ function maskApiKey(key: string): string {
 }
 
 export async function GET(request: NextRequest) {
+  const supabase = getSupabaseClient();
   try {
     // Get user's API keys from database
     // For demo, return mock data

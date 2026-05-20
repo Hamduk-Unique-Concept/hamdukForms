@@ -1,17 +1,11 @@
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseClient } from '@/lib/supabase/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-);
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 // This endpoint should be called via Vercel Cron or a scheduled task
 // Trigger at the start of each month (1st at 00:00 UTC)
 export async function POST(request: NextRequest) {
+  const supabase = getSupabaseClient();
   try {
     // Verify cron secret if provided
     const cronSecret = request.headers.get('authorization');

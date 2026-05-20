@@ -1,11 +1,6 @@
+import { getSupabaseClient } from '@/lib/supabase/client';
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import * as speakeasy from 'speakeasy';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 function generateBackupCodes(count: number = 10): string[] {
   const codes: string[] = [];
@@ -20,6 +15,7 @@ function generateBackupCodes(count: number = 10): string[] {
 }
 
 export async function POST(request: NextRequest) {
+  const supabase = getSupabaseClient();
   try {
     const { code, secret } = await request.json();
 

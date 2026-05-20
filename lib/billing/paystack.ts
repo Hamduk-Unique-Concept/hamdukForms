@@ -151,6 +151,22 @@ export class PaystackClient {
   }
 }
 
-export const paystack = new PaystackClient(
-  process.env.PAYSTACK_SECRET_KEY || ''
-);
+let paystackInstance: PaystackClient | null = null;
+
+export function getPaystackClient(): PaystackClient {
+  if (!paystackInstance) {
+    const key = process.env.PAYSTACK_SECRET_KEY;
+    if (!key) {
+      throw new Error('PAYSTACK_SECRET_KEY environment variable is not set');
+    }
+    paystackInstance = new PaystackClient(key);
+  }
+  return paystackInstance;
+}
+
+// Backwards compatibility proxy
+export const paystack = new Proxy({} as PaystackClient, {
+  get: (target, prop) => {
+    return (getPaystackClient() as any)[prop];
+  },
+});
