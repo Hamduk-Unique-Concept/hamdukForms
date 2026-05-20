@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import WebhookEditor from '@/components/form-builder/webhook-editor';
+import FeatureGate from '@/components/billing/feature-gate';
 
 interface WebhookLog {
   id: string;
@@ -15,7 +16,7 @@ interface WebhookLog {
   timestamp: string;
 }
 
-export default function WebhooksPage({ params }: { params: { id: string } }) {
+function WebhooksPageContent({ params }: { params: { id: string } }) {
   const [webhooks, setWebhooks] = useState([]);
   const [logs, setLogs] = useState<WebhookLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -133,5 +134,13 @@ export default function WebhooksPage({ params }: { params: { id: string } }) {
         )}
       </div>
     </div>
+  );
+}
+
+export default function WebhooksPage({ params }: { params: { id: string } }) {
+  return (
+    <FeatureGate featureKey="webhooks_api" featureName="Webhooks & API">
+      <WebhooksPageContent params={params} />
+    </FeatureGate>
   );
 }

@@ -1,18 +1,13 @@
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseClient } from '@/lib/supabase/client';
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-);
-
 const encryptKey = (key: string): string => {
-  const cipher = crypto.createCipher('aes-256-cbc', process.env.ENCRYPTION_KEY || 'default-key');
   return cipher.update(key, 'utf8', 'hex') + cipher.final('hex');
 };
 
 export async function POST(request: NextRequest) {
+  const supabase = getSupabaseClient();
   try {
     const authHeader = request.headers.get('Authorization');
     if (!authHeader) {

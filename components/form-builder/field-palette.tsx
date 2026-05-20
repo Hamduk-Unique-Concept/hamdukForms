@@ -1,10 +1,18 @@
 'use client';
 
+import { useFeatureAccess } from '@/lib/billing/use-feature-access';
+import { Lock } from 'lucide-react';
+
 interface FieldPaletteProps {
   onFieldAdd: (fieldType: string) => void;
+  organizationId?: string;
 }
 
-export default function FieldPalette({ onFieldAdd }: FieldPaletteProps) {
+export default function FieldPalette({ onFieldAdd, organizationId }: FieldPaletteProps) {
+  const { hasAccess: hasPaymentAccess } = useFeatureAccess({
+    organizationId: organizationId || '',
+    featureKey: 'payment_forms',
+  });
   const basicFields = [
     { type: 'text', label: 'Short Text', icon: 'A' },
     { type: 'textarea', label: 'Long Text', icon: '📝' },
@@ -82,14 +90,20 @@ export default function FieldPalette({ onFieldAdd }: FieldPaletteProps) {
     { type: 'bundle', label: 'Product Bundle', icon: '📚' },
   ];
 
-  const FieldButton = ({ type, label, icon }: any) => (
+  const FieldButton = ({ type, label, icon, disabled = false }: any) => (
     <button
-      onClick={() => onFieldAdd(type)}
-      className="w-full flex items-center gap-2 p-2 rounded-lg border border-gray-200 hover:border-primary hover:bg-primary/5 text-left text-sm transition-all"
-      title={label}
+      onClick={() => !disabled && onFieldAdd(type)}
+      disabled={disabled}
+      className={`w-full flex items-center gap-2 p-2 rounded-lg border text-left text-sm transition-all ${
+        disabled
+          ? 'border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed'
+          : 'border-gray-200 hover:border-primary hover:bg-primary/5'
+      }`}
+      title={disabled ? `${label} requires Pro plan or higher` : label}
     >
       <span className="text-lg">{icon}</span>
-      <span className="text-xs font-medium truncate">{label}</span>
+      <span className="text-xs font-medium truncate flex-1">{label}</span>
+      {disabled && <Lock className="h-3 w-3 text-gray-400" />}
     </button>
   );
 
@@ -171,7 +185,11 @@ export default function FieldPalette({ onFieldAdd }: FieldPaletteProps) {
         <h3 className="font-semibold text-xs uppercase text-gray-700 mb-2">Payments & Commerce</h3>
         <div className="space-y-1">
           {paymentFields.map(field => (
-            <FieldButton key={field.type} {...field} />
+            <FieldButton 
+              key={field.type} 
+              {...field} 
+              disabled={!hasPaymentAccess}
+            />
           ))}
         </div>
       </div>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import FeatureGate from '@/components/billing/feature-gate';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { DownloadCloud, RefreshCw } from 'lucide-react';
 
@@ -20,7 +21,7 @@ interface AnalyticsData {
   deviceStats: Array<{ device: string; count: number }>;
 }
 
-export default function AnalyticsPage({ params }: { params: { id: string } }) {
+function AnalyticsPageContent({ params }: { params: { id: string } }) {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<'7d' | '30d' | '90d'>('30d');
@@ -241,5 +242,13 @@ export default function AnalyticsPage({ params }: { params: { id: string } }) {
         </div>
       </Card>
     </div>
+  );
+}
+
+export default function AnalyticsPage({ params }: { params: { id: string } }) {
+  return (
+    <FeatureGate featureKey="advanced_analytics" featureName="Advanced Analytics">
+      <AnalyticsPageContent params={params} />
+    </FeatureGate>
   );
 }

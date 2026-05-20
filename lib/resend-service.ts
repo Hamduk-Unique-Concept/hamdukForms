@@ -1,6 +1,17 @@
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let resendInstance: Resend | null = null;
+
+function getResendClient(): Resend {
+  if (!resendInstance) {
+    const key = process.env.RESEND_API_KEY;
+    if (!key) {
+      throw new Error('RESEND_API_KEY environment variable is not set');
+    }
+    resendInstance = new Resend(key);
+  }
+  return resendInstance;
+}
 
 export interface EmailOptions {
   to: string | string[];
@@ -14,6 +25,7 @@ export interface EmailOptions {
 
 export async function sendEmail(options: EmailOptions) {
   try {
+    const resend = getResendClient();
     const response = await resend.emails.send({
       from: process.env.RESEND_FROM_EMAIL || 'noreply@hamduk.forms',
       to: options.to,
