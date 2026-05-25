@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { signUp, createUserProfile } from '@/lib/auth';
+import { signUp, createUserProfile, supabase } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
@@ -15,6 +15,7 @@ export default function SignupPage() {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,6 +24,7 @@ export default function SignupPage() {
     const referralCode = new URLSearchParams(window.location.search).get('ref');
     if (referralCode) {
       localStorage.setItem('referralCode', referralCode);
+      setReferralCode(referralCode);
     }
   }, []);
 
@@ -46,12 +48,24 @@ export default function SignupPage() {
     } else if (data?.user) {
       // Create user profile
       await createUserProfile(data.user.id, email, fullName);
+      if (referralCode.trim()) {
+        localStorage.setItem('referralCode', referralCode.trim());
+      }
       router.push('/auth/confirm-email');
     }
   }
 
-  const handleOAuth = (provider: string) => {
-    window.location.href = `/api/auth/oauth?provider=${provider}`;
+  const handleOAuth = async (provider: 'google' | 'azure') => {
+    if (referralCode.trim()) {
+      localStorage.setItem('referralCode', referralCode.trim());
+    }
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: `${window.location.origin}/auth/onboarding`,
+      },
+    });
+    if (error) setError(error.message);
   };
 
   return (
@@ -80,7 +94,7 @@ export default function SignupPage() {
           <Button
             type="button"
             variant="outline"
-            onClick={() => handleOAuth('microsoft')}
+            onClick={() => handleOAuth('azure')}
             className="w-full flex items-center justify-center gap-2"
           >
             <MailIcon className="w-5 h-5" />
@@ -128,6 +142,20 @@ export default function SignupPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
+              />
+            </div>
+
+            <div>
+              <label htmlFor="referral-code" className="block text-sm font-medium text-gray-700 mb-2">
+                Referral Code <span className="text-gray-400">(optional)</span>
+              </label>
+              <Input
+                id="referral-code"
+                name="referral-code"
+                type="text"
+                placeholder="Enter referral code"
+                value={referralCode}
+                onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
               />
             </div>
 

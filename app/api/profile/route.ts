@@ -22,7 +22,8 @@ export async function PUT(request: NextRequest) {
     const { error } = await supabase
       .from('user_profiles')
       .upsert({
-        user_id: user.id,
+        id: user.id,
+        email: user.email,
         full_name: profileData.fullName,
         username: profileData.username,
         title: profileData.title,
@@ -41,7 +42,7 @@ export async function PUT(request: NextRequest) {
         cover_image: profileData.coverImage,
         contact_email_public: profileData.contactEmailPublic,
         updated_at: new Date(),
-      }, { onConflict: 'user_id' });
+      }, { onConflict: 'id' });
 
     if (error) throw error;
 
@@ -77,8 +78,8 @@ export async function GET(request: NextRequest) {
     const { data: profile, error } = await supabase
       .from('user_profiles')
       .select('*')
-      .eq('user_id', user.id)
-      .single();
+      .eq('id', user.id)
+      .maybeSingle();
 
     if (error && error.code !== 'PGRST116') throw error;
 

@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import TwoFactorSetup from '@/components/security/two-factor-setup';
+import { useAuth } from '@/app/providers';
 import { Shield, Lock, Key, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface SecuritySettings {
@@ -13,9 +14,11 @@ interface SecuritySettings {
   lastPasswordChange: string;
   activeDevices: number;
   dataEncryption: boolean;
+  sessions?: Array<any>;
 }
 
 export default function SecurityPage() {
+  const { session } = useAuth();
   const [settings, setSettings] = useState<SecuritySettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [showSessions, setShowSessions] = useState(false);
@@ -23,7 +26,9 @@ export default function SecurityPage() {
   useEffect(() => {
     const fetchSecuritySettings = async () => {
       try {
-        const response = await fetch('/api/security/settings');
+        const response = await fetch('/api/security/settings', {
+          headers: { Authorization: `Bearer ${session?.access_token}` },
+        });
         if (response.ok) {
           const data = await response.json();
           setSettings(data);
@@ -36,7 +41,37 @@ export default function SecurityPage() {
     };
 
     fetchSecuritySettings();
-  }, []);
+  }, [session?.access_token]);
+
+  const logoutSession = async (sessionId: string) => {
+    await fetch('/api/security/settings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session?.access_token}`,
+      },
+      body: JSON.stringify({ action: 'logout_session', sessionId }),
+    });
+    setSettings((prev) => prev ? {
+      ...prev,
+      sessions: (prev.sessions || []).filter((item) => item.id !== sessionId),
+      activeDevices: Math.max((prev.activeDevices || 1) - 1, 1),
+    } : prev);
+  };
+
+  const exportData = async () => {
+    const response = await fetch('/api/account/export', {
+      headers: { Authorization: `Bearer ${session?.access_token}` },
+    });
+    const data = await response.json();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'hamduk-data-export.json';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   if (loading) {
     return <div className="p-6">Loading security settings...</div>;
@@ -165,31 +200,22 @@ export default function SecurityPage() {
             </p>
 
             <div className="space-y-3">
-              <Card className="p-4 border">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-medium text-sm">Chrome on Windows</p>
-                    <p className="text-xs text-gray-500">Last active: 2 minutes ago</p>
-                    <p className="text-xs text-gray-400 mt-1">IP: 192.168.1.1</p>
+              {(settings?.sessions || []).map((item, index) => (
+                <Card key={item.id} className="p-4 border">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="font-medium text-sm">{item.device_info?.userAgent || item.user_agent || 'Unknown device'}</p>
+                      <p className="text-xs text-gray-500">Last active: {item.last_used ? new Date(item.last_used).toLocaleString() : 'Unknown'}</p>
+                      <p className="text-xs text-gray-400 mt-1">IP: {item.ip_address || 'Not captured'}</p>
+                    </div>
+                    {index === 0 ? (
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Current</span>
+                    ) : (
+                      <Button variant="outline" size="sm" onClick={() => logoutSession(item.id)}>Log Out</Button>
+                    )}
                   </div>
-                  <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
-                    Current
-                  </span>
-                </div>
-              </Card>
-
-              <Card className="p-4 border">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-medium text-sm">Safari on iPhone</p>
-                    <p className="text-xs text-gray-500">Last active: 3 days ago</p>
-                    <p className="text-xs text-gray-400 mt-1">IP: 203.0.113.42</p>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    Log Out
-                  </Button>
-                </div>
-              </Card>
+                </Card>
+              ))}
             </div>
           </Card>
         </TabsContent>
@@ -237,13 +263,13 @@ export default function SecurityPage() {
             </div>
 
             <div className="mt-6 space-y-3">
-              <Button variant="outline" className="w-full">
+              <Button variant="outline" className="w-full" onClick={() => window.open('/privacy', '_blank')}>
                 Download Privacy Policy
               </Button>
-              <Button variant="outline" className="w-full">
+              <Button variant="outline" className="w-full" onClick={exportData}>
                 Export My Data
               </Button>
-              <Button variant="outline" className="w-full">
+              <Button variant="outline" className="w-full" onClick={() => window.location.href = '/dashboard/settings/account'}>
                 Request Data Deletion
               </Button>
             </div>

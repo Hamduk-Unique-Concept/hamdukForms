@@ -49,7 +49,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ message: 'Unauthorized access to this form' }, { status: 403 });
     }
 
-    return NextResponse.json({ form }, { status: 200 });
+    const { data: fields } = await supabase
+      .from('form_fields')
+      .select('*')
+      .eq('form_id', formId)
+      .order('field_order', { ascending: true });
+
+    return NextResponse.json({ form, fields: fields || [] }, { status: 200 });
   } catch (error: any) {
     console.error('[v0] Form fetch error:', error);
     return NextResponse.json(

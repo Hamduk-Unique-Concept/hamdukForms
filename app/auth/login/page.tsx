@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { signIn } from '@/lib/auth';
+import { signIn, supabase } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
@@ -31,8 +31,14 @@ export default function LoginPage() {
     }
   }
 
-  const handleOAuth = (provider: string) => {
-    window.location.href = `/api/auth/oauth?provider=${provider}`;
+  const handleOAuth = async (provider: 'google' | 'azure') => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: `${window.location.origin}/auth/onboarding`,
+      },
+    });
+    if (error) setError(error.message);
   };
 
   return (
@@ -61,7 +67,7 @@ export default function LoginPage() {
           <Button
             type="button"
             variant="outline"
-            onClick={() => handleOAuth('microsoft')}
+            onClick={() => handleOAuth('azure')}
             className="w-full flex items-center justify-center gap-2"
           >
             <MailIcon className="w-5 h-5" />

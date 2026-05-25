@@ -56,22 +56,7 @@ export async function GET(
       .order('order_index');
 
     // Increment view count
-    const { data: analytics } = await supabase
-      .from('form_response_analytics')
-      .select('views')
-      .eq('form_id', publishLink.form_id)
-      .maybeSingle();
-
-    await supabase
-      .from('form_response_analytics')
-      .upsert(
-        {
-          form_id: publishLink.form_id,
-          views: (analytics?.views || 0) + 1,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'form_id' }
-      );
+    await supabase.rpc('increment_form_view', { target_form_id: publishLink.form_id });
 
     const normalizedFields = (fields || []).map((field: any) => ({
       ...field,

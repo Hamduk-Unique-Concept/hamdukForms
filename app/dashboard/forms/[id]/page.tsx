@@ -252,7 +252,7 @@ export default function FormDetailPage({ params }: { params: Promise<{ id: strin
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-xl font-semibold mb-4">Form Actions</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Link href={`/dashboard/forms/${form.id}`}>
+          <Link href={`/dashboard/forms/${form.id}/edit`}>
             <Button className="w-full" variant="outline">
               Edit Form
             </Button>

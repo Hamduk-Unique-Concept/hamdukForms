@@ -1,12 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/app/providers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { updateUserProfile } from '@/lib/auth';
 import { Upload } from 'lucide-react';
 
 export default function ProfilePage() {
@@ -31,6 +30,38 @@ export default function ProfilePage() {
     coverImage: '',
     contactEmailPublic: false,
   });
+
+  useEffect(() => {
+    if (!session?.access_token) return;
+    fetch('/api/profile', {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    })
+      .then((response) => response.json())
+      .then(({ profile }) => {
+        if (!profile) return;
+        setFormData((prev) => ({
+          ...prev,
+          fullName: profile.full_name || '',
+          username: profile.username || '',
+          title: profile.title || '',
+          country: profile.country || '',
+          timezone: profile.timezone || '',
+          website: profile.website || '',
+          bio: profile.bio || '',
+          twitter: profile.twitter || '',
+          linkedin: profile.linkedin || '',
+          github: profile.github || '',
+          instagram: profile.instagram || '',
+          phone: profile.phone_number || profile.phone || '',
+          phoneCountryCode: profile.phone_country_code || '+234',
+          language: profile.primary_language || profile.language || 'en',
+          profileImage: profile.profile_image || profile.avatar_url || '',
+          coverImage: profile.cover_image || '',
+          contactEmailPublic: Boolean(profile.contact_email_public),
+        }));
+      })
+      .catch(console.error);
+  }, [session?.access_token]);
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));

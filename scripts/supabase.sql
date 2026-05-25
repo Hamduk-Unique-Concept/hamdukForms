@@ -535,7 +535,19 @@ CREATE TABLE public.payments (
   customer_phone character varying,
   created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
   updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  payment_method_override text,
+  marked_paid_by uuid,
+  marked_paid_at timestamp with time zone,
+  escrow_status text,
+  escrow_release_at timestamp with time zone,
+  refunded_at timestamp with time zone,
+  refund_status text,
+  refund_reference text,
+  refunded_by uuid,
+  refund_reason text,
   CONSTRAINT payments_pkey PRIMARY KEY (id),
+  CONSTRAINT payments_marked_paid_by_fkey FOREIGN KEY (marked_paid_by) REFERENCES auth.users(id),
+  CONSTRAINT payments_refunded_by_fkey FOREIGN KEY (refunded_by) REFERENCES auth.users(id),
   CONSTRAINT payments_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id),
   CONSTRAINT payments_form_id_fkey FOREIGN KEY (form_id) REFERENCES public.forms(id),
   CONSTRAINT payments_response_id_fkey FOREIGN KEY (response_id) REFERENCES public.form_responses(id)
@@ -650,6 +662,29 @@ CREATE TABLE public.referral_redemptions (
   CONSTRAINT referral_redemptions_referred_user_id_fkey FOREIGN KEY (referred_user_id) REFERENCES auth.users(id),
   CONSTRAINT referral_redemptions_referred_organization_id_fkey FOREIGN KEY (referred_organization_id) REFERENCES public.organizations(id),
   CONSTRAINT referral_redemptions_referrer_payout_id_fkey FOREIGN KEY (referrer_payout_id) REFERENCES public.referral_payouts(id)
+);
+CREATE TABLE public.refund_requests (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  payment_id uuid,
+  form_id uuid,
+  organization_id uuid,
+  respondent_email text,
+  reason text,
+  amount numeric,
+  status text NOT NULL DEFAULT 'pending'::text,
+  gateway_refund_id text,
+  gateway_status text,
+  dispute_status text DEFAULT 'none'::text,
+  dispute_notes text,
+  processed_by uuid,
+  processed_at timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT refund_requests_pkey PRIMARY KEY (id),
+  CONSTRAINT refund_requests_payment_id_fkey FOREIGN KEY (payment_id) REFERENCES public.payments(id),
+  CONSTRAINT refund_requests_form_id_fkey FOREIGN KEY (form_id) REFERENCES public.forms(id),
+  CONSTRAINT refund_requests_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id),
+  CONSTRAINT refund_requests_processed_by_fkey FOREIGN KEY (processed_by) REFERENCES auth.users(id)
 );
 CREATE TABLE public.response_comments (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -775,6 +810,29 @@ CREATE TABLE public.team_invitations (
   CONSTRAINT team_invitations_pkey PRIMARY KEY (id),
   CONSTRAINT team_invitations_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id),
   CONSTRAINT team_invitations_invited_by_fkey FOREIGN KEY (invited_by) REFERENCES public.user_profiles(id)
+);
+CREATE TABLE public.tickets (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  ticket_number text NOT NULL UNIQUE,
+  response_id uuid,
+  form_id uuid,
+  organization_id uuid,
+  attendee_name text,
+  attendee_email text,
+  ticket_type text,
+  ticket_url text,
+  qr_code_data text,
+  payment_reference text,
+  checked_in boolean DEFAULT false,
+  checked_in_at timestamp with time zone,
+  checked_in_by uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT tickets_pkey PRIMARY KEY (id),
+  CONSTRAINT tickets_response_id_fkey FOREIGN KEY (response_id) REFERENCES public.form_responses(id),
+  CONSTRAINT tickets_form_id_fkey FOREIGN KEY (form_id) REFERENCES public.forms(id),
+  CONSTRAINT tickets_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id),
+  CONSTRAINT tickets_checked_in_by_fkey FOREIGN KEY (checked_in_by) REFERENCES auth.users(id)
 );
 CREATE TABLE public.transactions (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -956,6 +1014,25 @@ CREATE TABLE public.users (
   email_verified boolean DEFAULT false,
   verified_at timestamp without time zone,
   CONSTRAINT users_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.waitlist_entries (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  form_id uuid NOT NULL,
+  organization_id uuid,
+  email text NOT NULL,
+  name text,
+  phone text,
+  waitlist_position integer NOT NULL,
+  status text NOT NULL DEFAULT 'waiting'::text,
+  notified_at timestamp with time zone,
+  promoted_at timestamp with time zone,
+  promotion_expires_at timestamp with time zone,
+  metadata jsonb DEFAULT '{}'::jsonb,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT waitlist_entries_pkey PRIMARY KEY (id),
+  CONSTRAINT waitlist_entries_form_id_fkey FOREIGN KEY (form_id) REFERENCES public.forms(id),
+  CONSTRAINT waitlist_entries_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id)
 );
 CREATE TABLE public.webhook_logs (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),

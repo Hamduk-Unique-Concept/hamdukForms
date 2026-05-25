@@ -1357,6 +1357,26 @@ ORDER BY tablename, policyname;
   },
   {
     "schemaname": "public",
+    "tablename": "refund_requests",
+    "policyname": "Form owners manage refunds",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (forms f\n     LEFT JOIN organization_members om ON ((om.organization_id = f.organization_id)))\n  WHERE ((f.id = refund_requests.form_id) AND ((f.created_by = auth.uid()) OR ((om.user_id = auth.uid()) AND (om.is_active = true) AND (om.role = ANY (ARRAY['admin'::text, 'editor'::text])))))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM (forms f\n     LEFT JOIN organization_members om ON ((om.organization_id = f.organization_id)))\n  WHERE ((f.id = refund_requests.form_id) AND ((f.created_by = auth.uid()) OR ((om.user_id = auth.uid()) AND (om.is_active = true) AND (om.role = ANY (ARRAY['admin'::text, 'editor'::text])))))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "refund_requests",
+    "policyname": "Public can request refunds for own payment",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(auth.uid() IS NOT NULL)"
+  },
+  {
+    "schemaname": "public",
     "tablename": "security_sessions",
     "policyname": "View own sessions",
     "permissive": "PERMISSIVE",
@@ -1423,6 +1443,26 @@ ORDER BY tablename, policyname;
     "roles": "{public}",
     "cmd": "SELECT",
     "qual": "((auth.uid() = user_id) OR (organization_id IN ( SELECT organization_members.organization_id\n   FROM organization_members\n  WHERE (organization_members.user_id = auth.uid()))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "tickets",
+    "policyname": "Form owners manage tickets",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (forms f\n     JOIN organization_members om ON ((om.organization_id = f.organization_id)))\n  WHERE ((f.id = tickets.form_id) AND (om.user_id = auth.uid()) AND (om.is_active = true))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "tickets",
+    "policyname": "Public can validate tickets",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "true",
     "with_check": null
   },
   {
@@ -1594,6 +1634,26 @@ ORDER BY tablename, policyname;
     "cmd": "SELECT",
     "qual": "(auth.uid() = id)",
     "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "waitlist_entries",
+    "policyname": "Form owners manage waitlists",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (forms f\n     LEFT JOIN organization_members om ON ((om.organization_id = f.organization_id)))\n  WHERE ((f.id = waitlist_entries.form_id) AND ((f.created_by = auth.uid()) OR ((om.user_id = auth.uid()) AND (om.is_active = true) AND (om.role = ANY (ARRAY['admin'::text, 'editor'::text])))))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM (forms f\n     LEFT JOIN organization_members om ON ((om.organization_id = f.organization_id)))\n  WHERE ((f.id = waitlist_entries.form_id) AND ((f.created_by = auth.uid()) OR ((om.user_id = auth.uid()) AND (om.is_active = true) AND (om.role = ANY (ARRAY['admin'::text, 'editor'::text])))))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "waitlist_entries",
+    "policyname": "Public can join waitlist",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(EXISTS ( SELECT 1\n   FROM forms f\n  WHERE ((f.id = waitlist_entries.form_id) AND (f.is_published = true))))"
   },
   {
     "schemaname": "public",
@@ -1842,6 +1902,11 @@ ORDER BY table_name;
   },
   {
     "table_schema": "public",
+    "table_name": "refund_requests",
+    "table_type": "BASE TABLE"
+  },
+  {
+    "table_schema": "public",
     "table_name": "response_comments",
     "table_type": "BASE TABLE"
   },
@@ -1878,6 +1943,11 @@ ORDER BY table_name;
   {
     "table_schema": "public",
     "table_name": "team_invitations",
+    "table_type": "BASE TABLE"
+  },
+  {
+    "table_schema": "public",
+    "table_name": "tickets",
     "table_type": "BASE TABLE"
   },
   {
@@ -1938,6 +2008,11 @@ ORDER BY table_name;
   {
     "table_schema": "public",
     "table_name": "users",
+    "table_type": "BASE TABLE"
+  },
+  {
+    "table_schema": "public",
+    "table_name": "waitlist_entries",
     "table_type": "BASE TABLE"
   },
   {

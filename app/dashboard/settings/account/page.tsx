@@ -2,13 +2,14 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/app/providers';
+import { supabase } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { AlertCircle, Trash2 } from 'lucide-react';
 
 export default function AccountSettingsPage() {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [loading, setLoading] = useState(false);
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -28,25 +29,23 @@ export default function AccountSettingsPage() {
       return;
     }
 
-    setLoading(true);
+      setLoading(true);
     try {
-      const response = await fetch('/api/account/change-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user?.id}`,
-        },
-        body: JSON.stringify({
-          currentPassword: passwordData.currentPassword,
-          newPassword: passwordData.newPassword,
-        }),
+      if (!user?.email) throw new Error('No signed-in user');
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: passwordData.currentPassword,
       });
+      if (signInError) throw new Error('Current password is incorrect');
 
-      if (!response.ok) throw new Error('Failed to change password');
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: passwordData.newPassword,
+      });
+      if (updateError) throw updateError;
       alert('Password changed successfully!');
       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-    } catch (error) {
-      alert('Error changing password');
+    } catch (error: any) {
+      alert(error.message || 'Error changing password');
     } finally {
       setLoading(false);
     }
@@ -61,10 +60,10 @@ export default function AccountSettingsPage() {
     setLoading(true);
     try {
       const response = await fetch('/api/account/delete', {
-        method: 'POST',
+        method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user?.id}`,
+          'Authorization': `Bearer ${session?.access_token}`,
         },
       });
 

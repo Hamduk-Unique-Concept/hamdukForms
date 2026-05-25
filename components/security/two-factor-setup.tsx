@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { useAuth } from '@/app/providers';
 import { ShieldAlert, Copy, Check } from 'lucide-react';
 
 interface TwoFactorSetupProps {
@@ -11,6 +12,7 @@ interface TwoFactorSetupProps {
 }
 
 export default function TwoFactorSetup({ onSetupComplete }: TwoFactorSetupProps) {
+  const { session } = useAuth();
   const [step, setStep] = useState<'start' | 'qr' | 'verify' | 'backup'>('start');
   const [qrCode, setQrCode] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
@@ -24,6 +26,7 @@ export default function TwoFactorSetup({ onSetupComplete }: TwoFactorSetupProps)
     try {
       const response = await fetch('/api/security/2fa/setup', {
         method: 'POST',
+        headers: { Authorization: `Bearer ${session?.access_token}` },
       });
 
       if (response.ok) {
@@ -49,7 +52,10 @@ export default function TwoFactorSetup({ onSetupComplete }: TwoFactorSetupProps)
     try {
       const response = await fetch('/api/security/2fa/verify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+        },
         body: JSON.stringify({ code: verificationCode }),
       });
 
@@ -70,14 +76,8 @@ export default function TwoFactorSetup({ onSetupComplete }: TwoFactorSetupProps)
 
   const handleComplete = async () => {
     try {
-      const response = await fetch('/api/security/2fa/enable', {
-        method: 'POST',
-      });
-
-      if (response.ok) {
-        setEnabled2FA(true);
-        onSetupComplete?.();
-      }
+      setEnabled2FA(true);
+      onSetupComplete?.();
     } catch (error) {
       console.error('Error enabling 2FA:', error);
       alert('Failed to enable 2FA');
@@ -138,8 +138,11 @@ export default function TwoFactorSetup({ onSetupComplete }: TwoFactorSetupProps)
           <div>
             <p className="text-sm font-medium mb-3">Scan with your authenticator app</p>
             <div className="bg-gray-100 p-4 rounded-lg text-center">
-              <div className="text-4xl">📱</div>
-              <p className="text-xs text-gray-600 mt-2">QR Code would display here</p>
+              {qrCode ? (
+                <img src={qrCode} alt="2FA QR code" className="mx-auto h-48 w-48" />
+              ) : (
+                <p className="text-xs text-gray-600">QR code loading...</p>
+              )}
             </div>
           </div>
           <p className="text-xs text-gray-600">

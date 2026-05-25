@@ -11,7 +11,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = authHeader.replace('Bearer ', '');
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+
+    if (authError || !user) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
 
     // Generate secret for authenticator app
     const secret = speakeasy.generateSecret({
@@ -23,15 +30,15 @@ export async function POST(request: NextRequest) {
     // Generate QR code as data URL
     const qrCode = await QRCode.toDataURL(secret.otpauth_url || '');
 
-    // Store temporary secret for verification
     await supabase
-      .from('user_2fa_temp')
-      .insert({
-        user_id: userId,
+      .from('user_2fa')
+      .upsert({
+        user_id: user.id,
         secret: secret.base32,
-        created_at: new Date().toISOString(),
-      })
-      .select();
+        backup_codes: [],
+        is_enabled: false,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' });
 
     return NextResponse.json({
       secret: secret.base32,

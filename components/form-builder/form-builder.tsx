@@ -18,18 +18,28 @@ interface FormBuilderProps {
   formName: string;
   formType: string;
   formId?: string;
+  initialFields?: any[];
+  initialSettings?: any;
+  initialDescription?: string;
 }
 
-export default function FormBuilder({ formName, formType, formId: initialFormId }: FormBuilderProps) {
+export default function FormBuilder({
+  formName,
+  formType,
+  formId: initialFormId,
+  initialFields = [],
+  initialSettings = {},
+  initialDescription = '',
+}: FormBuilderProps) {
   const router = useRouter();
   const { session } = useAuth();
-  const [fields, setFields] = useState<any[]>([]);
+  const [fields, setFields] = useState<any[]>(initialFields);
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
   const [isPublished, setIsPublished] = useState(false);
-  const [formSettings, setFormSettings] = useState<any>({});
+  const [formSettings, setFormSettings] = useState<any>(initialSettings);
 
   // Track the saved formId in state so it persists after first save
   const [savedFormId, setSavedFormId] = useState<string | null>(initialFormId || null);
@@ -107,7 +117,7 @@ export default function FormBuilder({ formName, formType, formId: initialFormId 
           formId: savedFormId || null, // ← null for new forms, not a fake UUID
           organizationId,
           title: formName,
-          description: '',
+          description: initialDescription,
           fields: fields.map((f, i) => ({
             type: f.type,
             label: f.label,

@@ -174,23 +174,7 @@ export async function POST(
       { onConflict: 'organization_id,metric,period_start' }
     );
 
-    // Update analytics
-    const { data: analytics } = await supabase
-      .from('form_response_analytics')
-      .select('total_responses')
-      .eq('form_id', formId)
-      .maybeSingle();
-
-    if (analytics) {
-      await supabase
-        .from('form_response_analytics')
-        .update({
-          total_responses: (analytics.total_responses || 0) + 1,
-          last_response_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('form_id', formId);
-    }
+    await supabase.rpc('increment_form_response_count', { target_form_id: formId });
 
     let ticketResult: any = null;
     const formSettings = parseMaybeJson(form.settings, {});

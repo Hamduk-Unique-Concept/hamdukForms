@@ -42,6 +42,94 @@ const booleanFeatureKeys = new Set([
   'priority_support',
 ]);
 
+const defaultFeatureValues: Record<string, Record<string, string>> = {
+  free: {
+    max_forms: '5',
+    max_responses_per_month: '100',
+    max_responses: '100',
+    team_seats: '1',
+    ai_credits_monthly: '10',
+    ai_credits: '10',
+    file_storage_gb: '0.5',
+    storage_gb: '0.5',
+    remove_branding: 'false',
+    custom_domain: 'false',
+    api_access: 'false',
+    payment_forms: 'false',
+    advanced_logic: 'false',
+    white_label: 'false',
+    priority_support: 'false',
+  },
+  starter: {
+    max_forms: '25',
+    max_responses_per_month: '1000',
+    max_responses: '1000',
+    team_seats: '3',
+    ai_credits_monthly: '100',
+    ai_credits: '100',
+    file_storage_gb: '5',
+    storage_gb: '5',
+    remove_branding: 'true',
+    custom_domain: 'false',
+    api_access: 'true',
+    payment_forms: 'true',
+    advanced_logic: 'true',
+    white_label: 'false',
+    priority_support: 'false',
+  },
+  pro: {
+    max_forms: '100',
+    max_responses_per_month: '10000',
+    max_responses: '10000',
+    team_seats: '10',
+    ai_credits_monthly: '1000',
+    ai_credits: '1000',
+    file_storage_gb: '50',
+    storage_gb: '50',
+    remove_branding: 'true',
+    custom_domain: 'true',
+    api_access: 'true',
+    payment_forms: 'true',
+    advanced_logic: 'true',
+    white_label: 'false',
+    priority_support: 'true',
+  },
+  business: {
+    max_forms: 'unlimited',
+    max_responses_per_month: 'unlimited',
+    max_responses: 'unlimited',
+    team_seats: '50',
+    ai_credits_monthly: 'unlimited',
+    ai_credits: 'unlimited',
+    file_storage_gb: '500',
+    storage_gb: '500',
+    remove_branding: 'true',
+    custom_domain: 'true',
+    api_access: 'true',
+    payment_forms: 'true',
+    advanced_logic: 'true',
+    white_label: 'true',
+    priority_support: 'true',
+  },
+  enterprise: {
+    max_forms: 'unlimited',
+    max_responses_per_month: 'unlimited',
+    max_responses: 'unlimited',
+    team_seats: 'unlimited',
+    ai_credits_monthly: 'unlimited',
+    ai_credits: 'unlimited',
+    file_storage_gb: 'unlimited',
+    storage_gb: 'unlimited',
+    remove_branding: 'true',
+    custom_domain: 'true',
+    api_access: 'true',
+    payment_forms: 'true',
+    advanced_logic: 'true',
+    white_label: 'true',
+    priority_support: 'true',
+  },
+};
+
 function parseFeatureValue(value: string | number | boolean | null | undefined) {
   if (value === null || value === undefined) return 0;
   if (typeof value === 'boolean' || typeof value === 'number') return value;
@@ -117,7 +205,7 @@ export async function checkFeatureAccess(
     const resolvedFeatureKey = featureAliases[featureKey] || featureKey;
     const { data: subscription } = await supabase
       .from('user_subscriptions')
-      .select('plan_id')
+      .select('plan_id, plan:plan_id(name)')
       .eq('organization_id', organizationId)
       .eq('status', 'active')
       .order('created_at', { ascending: false })
@@ -125,35 +213,34 @@ export async function checkFeatureAccess(
       .maybeSingle();
 
     let planId = subscription?.plan_id;
+    let planName = (subscription?.plan as any)?.name;
 
     if (!planId) {
       const { data: freePlan } = await supabase
         .from('plans')
-        .select('id')
+        .select('id, name')
         .eq('name', 'free')
         .maybeSingle();
 
       planId = freePlan?.id;
+      planName = freePlan?.name || 'free';
     }
 
     if (!planId) {
-      return {
-        allowed: false,
-        limit: 0,
-        usage: 0,
-        remaining: 0,
-        resetDate: getNextPeriodStart(),
-      };
+      planName = 'free';
     }
 
-    const { data: planFeature } = await supabase
-      .from('plan_features')
-      .select('feature_value')
-      .eq('plan_id', planId)
-      .eq('feature_key', resolvedFeatureKey)
-      .maybeSingle();
+    const { data: planFeature } = planId
+      ? await supabase
+          .from('plan_features')
+          .select('feature_value')
+          .eq('plan_id', planId)
+          .eq('feature_key', resolvedFeatureKey)
+          .maybeSingle()
+      : { data: null };
 
-    const parsedLimit = parseFeatureValue(planFeature?.feature_value);
+    const fallbackValue = defaultFeatureValues[String(planName || 'free').toLowerCase()]?.[resolvedFeatureKey];
+    const parsedLimit = parseFeatureValue(planFeature?.feature_value ?? fallbackValue);
     const usage = await getUsage(supabase, organizationId, resolvedFeatureKey);
 
     if (booleanFeatureKeys.has(resolvedFeatureKey)) {
