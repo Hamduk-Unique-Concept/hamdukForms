@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2 } from 'lucide-react';
+import { useAuth } from '@/app/providers';
 
 interface FormPageProps {
   params: Promise<{
@@ -12,12 +13,103 @@ interface FormPageProps {
   }>;
 }
 
+function parseBool(value: any) {
+  return value === true || value === 'true';
+}
+
+function SignatureCanvas({
+  value,
+  onChange,
+  label,
+}: {
+  value?: string;
+  onChange: (value: string) => void;
+  label: string;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const drawingRef = useRef(false);
+
+  const getPoint = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: ((event.clientX - rect.left) / rect.width) * canvas.width,
+      y: ((event.clientY - rect.top) / rect.height) * canvas.height,
+    };
+  };
+
+  const startDrawing = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext('2d');
+    if (!canvas || !context) return;
+    drawingRef.current = true;
+    canvas.setPointerCapture(event.pointerId);
+    const point = getPoint(event);
+    context.beginPath();
+    context.moveTo(point.x, point.y);
+  };
+
+  const draw = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!drawingRef.current) return;
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext('2d');
+    if (!canvas || !context) return;
+    const point = getPoint(event);
+    context.lineWidth = 2;
+    context.lineCap = 'round';
+    context.strokeStyle = '#111827';
+    context.lineTo(point.x, point.y);
+    context.stroke();
+    onChange(canvas.toDataURL('image/png'));
+  };
+
+  const stopDrawing = () => {
+    drawingRef.current = false;
+  };
+
+  const clear = () => {
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext('2d');
+    if (!canvas || !context) return;
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    onChange('');
+  };
+
+  return (
+    <div className="space-y-2">
+      <canvas
+        ref={canvasRef}
+        width={720}
+        height={220}
+        role="img"
+        aria-label={label}
+        onPointerDown={startDrawing}
+        onPointerMove={draw}
+        onPointerUp={stopDrawing}
+        onPointerLeave={stopDrawing}
+        className="h-44 w-full touch-none rounded-md border border-gray-300 bg-white"
+      />
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-gray-500">
+          {value ? 'Captured' : 'Draw inside the box'}
+        </span>
+        <Button type="button" variant="outline" size="sm" onClick={clear}>
+          Clear
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function FormPage({ params }: FormPageProps) {
   const searchParams = useSearchParams();
+  const { session, user, loading: authLoading } = useAuth();
   const [paramData, setParamData] = useState<{slug: string} | null>(null);
   const [form, setForm] = useState<any>(null);
   const [fields, setFields] = useState<any[]>([]);
   const [responses, setResponses] = useState<Record<string, any>>({});
+  const [formPassword, setFormPassword] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [isRedirectingToPayment, setIsRedirectingToPayment] = useState(false);
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
@@ -88,6 +180,18 @@ export default function FormPage({ params }: FormPageProps) {
   };
 
   const getFieldType = (field: any) => field.field_type || field.type;
+  const settings = form?.settings || {};
+  const oneResponsePerUser =
+    parseBool(settings.limitOnePerUser) ||
+    parseBool(settings.oneResponsePerPerson) ||
+    parseBool(settings.one_response_per_person) ||
+    Boolean(form?.limit_one_response_per_user);
+  const requireLogin = parseBool(settings.requireLogin) || parseBool(settings.require_login) || oneResponsePerUser;
+  const requirePassword =
+    parseBool(settings.requirePassword) ||
+    parseBool(settings.require_password) ||
+    parseBool(settings.passwordProtected) ||
+    Boolean(form?.require_password);
   const getPaymentSettings = (field: any) => field.options?.paymentSettings || field.paymentSettings || {};
   const paymentField = fields.find((field) => getFieldType(field) === 'payment');
   const paymentSettings = paymentField ? getPaymentSettings(paymentField) : null;
@@ -108,7 +212,11 @@ export default function FormPage({ params }: FormPageProps) {
 
   const getOptionLabel = (option: any) => {
     if (typeof option === 'string') return option;
-    return option?.label || option?.value || '';
+    const label = option?.label || option?.value || '';
+    if (option?.price !== undefined && option?.price !== null && option?.price !== '') {
+      return `${label} - ${option.currency || 'NGN'} ${Number(option.price || 0).toLocaleString()}`;
+    }
+    return label;
   };
 
   const getFieldOptions = (field: any) => {
@@ -147,6 +255,16 @@ export default function FormPage({ params }: FormPageProps) {
     }
 
     if (['textarea', 'address', 'draw', 'signature'].includes(fieldType)) {
+      if (fieldType === 'signature' || fieldType === 'draw') {
+        return (
+          <SignatureCanvas
+            value={value}
+            label={fieldType === 'signature' ? 'Signature pad' : 'Drawing canvas'}
+            onChange={(nextValue) => handleInputChange(field.id, nextValue)}
+          />
+        );
+      }
+
       return (
         <textarea
           placeholder={field.placeholder || ''}
@@ -159,7 +277,43 @@ export default function FormPage({ params }: FormPageProps) {
       );
     }
 
-    if (['select', 'country', 'currency', 'product', 'pricing', 'ticket', 'inventory', 'subscription', 'bundle', 'booking'].includes(fieldType)) {
+    if (fieldType === 'booking') {
+      const bookingValue = typeof value === 'object' && value ? value : {};
+      const durations = Array.isArray(field.options?.durations)
+        ? field.options.durations
+        : ['30 minutes', '1 hour', '2 hours'];
+      return (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <Input
+            type="date"
+            required={field.is_required}
+            value={bookingValue.date || ''}
+            onChange={(e) => handleInputChange(field.id, { ...bookingValue, date: e.target.value })}
+          />
+          <Input
+            type="time"
+            required={field.is_required}
+            value={bookingValue.time || ''}
+            onChange={(e) => handleInputChange(field.id, { ...bookingValue, time: e.target.value })}
+          />
+          <select
+            required={field.is_required}
+            value={bookingValue.duration || ''}
+            onChange={(e) => handleInputChange(field.id, { ...bookingValue, duration: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+          >
+            <option value="">Duration</option>
+            {durations.map((duration: string) => (
+              <option key={duration} value={duration}>
+                {duration}
+              </option>
+            ))}
+          </select>
+        </div>
+      );
+    }
+
+    if (['select', 'country', 'currency', 'product', 'pricing', 'ticket', 'inventory', 'subscription', 'bundle'].includes(fieldType)) {
       return (
         <select
           required={field.is_required}
@@ -178,6 +332,40 @@ export default function FormPage({ params }: FormPageProps) {
     }
 
     if (fieldType === 'radio' || fieldType === 'ranking') {
+      if (fieldType === 'ranking') {
+        const ranking = typeof value === 'object' && value ? value : {};
+        return (
+          <div className="space-y-3">
+            {options.map((opt: any, index: number) => {
+              const optionValue = getOptionValue(opt);
+              return (
+                <div key={optionValue} className="flex items-center gap-3">
+                  <span className="flex-1 text-sm">{getOptionLabel(opt)}</span>
+                  <select
+                    value={ranking[optionValue] || ''}
+                    required={field.is_required}
+                    onChange={(e) =>
+                      handleInputChange(field.id, {
+                        ...ranking,
+                        [optionValue]: e.target.value,
+                      })
+                    }
+                    className="w-28 px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  >
+                    <option value="">Rank</option>
+                    {options.map((_: any, rankIndex: number) => (
+                      <option key={rankIndex + 1} value={rankIndex + 1}>
+                        {rankIndex + 1}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              );
+            })}
+          </div>
+        );
+      }
+
       return (
         <div className="space-y-2">
           {options.map((opt: any) => {
@@ -293,6 +481,138 @@ export default function FormPage({ params }: FormPageProps) {
       );
     }
 
+    if (fieldType === 'daterange') {
+      const rangeValue = typeof value === 'object' && value ? value : {};
+      return (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Input
+            type="date"
+            required={field.is_required}
+            value={rangeValue.start || ''}
+            onChange={(e) => handleInputChange(field.id, { ...rangeValue, start: e.target.value })}
+          />
+          <Input
+            type="date"
+            required={field.is_required}
+            value={rangeValue.end || ''}
+            onChange={(e) => handleInputChange(field.id, { ...rangeValue, end: e.target.value })}
+          />
+        </div>
+      );
+    }
+
+    if (fieldType === 'matrix') {
+      const rows = field.options?.rows || ['Row 1', 'Row 2', 'Row 3'];
+      const columns = field.options?.columns || options || ['Option 1', 'Option 2', 'Option 3'];
+      const matrixValue = typeof value === 'object' && value ? value : {};
+      return (
+        <div className="overflow-x-auto rounded-md border border-gray-200">
+          <table className="w-full min-w-[520px] text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="p-3 text-left font-medium text-gray-600">Item</th>
+                {columns.map((column: any) => (
+                  <th key={getOptionValue(column)} className="p-3 text-center font-medium text-gray-600">
+                    {getOptionLabel(column)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row: any) => {
+                const rowValue = getOptionValue(row);
+                return (
+                  <tr key={rowValue} className="border-t">
+                    <td className="p-3">{getOptionLabel(row)}</td>
+                    {columns.map((column: any) => {
+                      const columnValue = getOptionValue(column);
+                      return (
+                        <td key={columnValue} className="p-3 text-center">
+                          <input
+                            type="radio"
+                            name={`${field.id}-${rowValue}`}
+                            required={field.is_required && !matrixValue[rowValue]}
+                            checked={matrixValue[rowValue] === columnValue}
+                            onChange={() =>
+                              handleInputChange(field.id, {
+                                ...matrixValue,
+                                [rowValue]: columnValue,
+                              })
+                            }
+                          />
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    if (fieldType === 'otp') {
+      return (
+        <Input
+          type="text"
+          inputMode="numeric"
+          maxLength={Number(field.options?.length || 6)}
+          placeholder={field.placeholder || 'Enter code'}
+          required={field.is_required}
+          value={value}
+          onChange={(e) => handleInputChange(field.id, e.target.value.replace(/\D/g, ''))}
+        />
+      );
+    }
+
+    if (fieldType === 'location') {
+      return (
+        <div className="space-y-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              navigator.geolocation.getCurrentPosition(
+                (position) =>
+                  handleInputChange(field.id, {
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
+                  }),
+                () => alert('Location access was not granted')
+              );
+            }}
+          >
+            Use my current location
+          </Button>
+          <Input
+            placeholder="Or enter address/location"
+            value={typeof value === 'string' ? value : value?.address || ''}
+            required={field.is_required && !value}
+            onChange={(e) => handleInputChange(field.id, e.target.value)}
+          />
+          {typeof value === 'object' && value?.latitude && (
+            <p className="text-xs text-gray-500">
+              {value.latitude}, {value.longitude}
+            </p>
+          )}
+        </div>
+      );
+    }
+
+    if (fieldType === 'embed') {
+      const embedUrl = field.default_value || field.defaultValue || field.options?.url || value;
+      return embedUrl ? (
+        <iframe
+          src={embedUrl}
+          title={field.label || 'Embedded content'}
+          className="h-64 w-full rounded-md border border-gray-300"
+        />
+      ) : (
+        <p className="text-sm text-gray-500">No embed URL configured.</p>
+      );
+    }
+
     if (['file', 'image', 'video', 'audio'].includes(fieldType)) {
       const acceptMap: Record<string, string> = { image: 'image/*', video: 'video/*', audio: 'audio/*' };
       return (
@@ -340,16 +660,11 @@ export default function FormPage({ params }: FormPageProps) {
       url: 'url',
       link: 'url',
       datetime: 'datetime-local',
-      daterange: 'text',
       color: 'color',
       qrcode: 'text',
       barcode: 'text',
-      otp: 'text',
       calculated: 'number',
-      location: 'text',
-      matrix: 'text',
       repeat: 'text',
-      embed: 'url',
     };
 
     return (
@@ -370,12 +685,16 @@ export default function FormPage({ params }: FormPageProps) {
     try {
       const response = await fetch(`/api/forms/${form.id}/submit`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({
           formId: form.id,
           responses,
           publishToken: paramData.slug,
           paymentRequired,
+          formPassword,
         }),
       });
 
@@ -465,6 +784,20 @@ export default function FormPage({ params }: FormPageProps) {
     );
   }
 
+  if (!authLoading && requireLogin && !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <div className="max-w-md w-full rounded-lg bg-white p-8 text-center shadow">
+          <h1 className="text-2xl font-bold mb-3">Login required</h1>
+          <p className="text-gray-600 mb-6">You need to sign in before submitting this form.</p>
+          <a href={`/auth/login?redirect=${encodeURIComponent(paramData?.slug ? `/forms/${paramData.slug}` : '/')}`} className="inline-flex w-full items-center justify-center rounded-md bg-primary px-4 py-2 text-white">
+            Sign in to continue
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-2xl mx-auto bg-white rounded-lg shadow p-8">
@@ -472,6 +805,21 @@ export default function FormPage({ params }: FormPageProps) {
         {form.description && <p className="text-gray-600 mb-8">{form.description}</p>}
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {requirePassword && (
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Form password <span className="text-red-500 ml-1">*</span>
+              </label>
+              <Input
+                type="password"
+                required
+                value={formPassword}
+                onChange={(event) => setFormPassword(event.target.value)}
+                placeholder="Enter the form password"
+              />
+            </div>
+          )}
+
           {fields.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-600">This form has no fields yet.</p>

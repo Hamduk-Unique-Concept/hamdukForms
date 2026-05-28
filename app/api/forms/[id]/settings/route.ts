@@ -1,6 +1,51 @@
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { NextRequest, NextResponse } from 'next/server';
 
+function settingBool(settings: any, ...keys: string[]) {
+  return keys.some((key) => settings?.[key] === true || settings?.[key] === 'true');
+}
+
+function settingValue(settings: any, fallback: any, ...keys: string[]) {
+  for (const key of keys) {
+    if (settings?.[key] !== undefined && settings?.[key] !== null && settings?.[key] !== '') {
+      return settings[key];
+    }
+  }
+  return fallback;
+}
+
+function mapSettingsColumns(settings: any) {
+  const maxResponses = settingValue(settings, null, 'maxResponses', 'max_responses');
+
+  return {
+    show_progress_bar: settingBool(settings, 'progressBar', 'showProgressOnScroll'),
+    show_form_title: settingValue(settings, true, 'showFormTitle'),
+    show_form_description: settingValue(settings, true, 'showFormDescription'),
+    allow_multiple_responses: settingBool(settings, 'allowMultipleResponses'),
+    limit_one_response_per_user: settingBool(settings, 'limitOnePerUser', 'oneResponsePerPerson'),
+    max_responses: maxResponses ? Number(maxResponses) : null,
+    require_password: settingBool(settings, 'requirePassword', 'passwordProtected'),
+    form_password: settingValue(settings, null, 'formPassword', 'password'),
+    scheduled_open_date: settingValue(settings, null, 'scheduledOpenDate', 'opensAt', 'openDate'),
+    scheduled_close_date: settingValue(settings, null, 'scheduledCloseDate', 'closesAt', 'closeDate', 'expiresAt'),
+    thank_you_page_enabled: settingBool(settings, 'thankYouPageEnabled'),
+    thank_you_title: settingValue(settings, 'Thank you!', 'thankYouTitle'),
+    thank_you_message: settingValue(settings, null, 'thankYouMessage'),
+    redirect_url: settingValue(settings, null, 'redirectUrl'),
+    collect_email: settingBool(settings, 'collectEmail'),
+    collect_phone: settingBool(settings, 'collectPhone'),
+  };
+}
+
+function parseSettings(settings: any) {
+  if (typeof settings !== 'string') return settings || {};
+  try {
+    return JSON.parse(settings || '{}');
+  } catch {
+    return {};
+  }
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -47,10 +92,12 @@ export async function PUT(
     }
 
     const { settings } = await request.json();
+    const parsedSettings = parseSettings(settings);
     const { error } = await supabase
       .from('forms')
       .update({
         settings: typeof settings === 'string' ? settings : JSON.stringify(settings || {}),
+        ...mapSettingsColumns(parsedSettings),
         updated_at: new Date().toISOString(),
       })
       .eq('id', id);

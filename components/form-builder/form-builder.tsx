@@ -23,6 +23,32 @@ interface FormBuilderProps {
   initialDescription?: string;
 }
 
+function getDefaultOptions(fieldType: string) {
+  if (fieldType === 'matrix') {
+    return { rows: ['Row 1', 'Row 2'], columns: ['Yes', 'No'] };
+  }
+
+  if (['select', 'radio', 'checkbox', 'multiselect', 'ranking'].includes(fieldType)) {
+    return [
+      { id: 'opt-1', label: 'Option 1', value: 'option_1' },
+      { id: 'opt-2', label: 'Option 2', value: 'option_2' },
+    ];
+  }
+
+  if (['product', 'pricing', 'ticket', 'inventory', 'subscription', 'bundle'].includes(fieldType)) {
+    return [
+      { id: 'item-1', label: 'Standard', value: 'standard', price: 5000, currency: 'NGN' },
+      { id: 'item-2', label: 'Premium', value: 'premium', price: 10000, currency: 'NGN' },
+    ];
+  }
+
+  if (fieldType === 'booking') {
+    return { durations: ['30 minutes', '1 hour', '2 hours'] };
+  }
+
+  return [];
+}
+
 export default function FormBuilder({
   formName,
   formType,
@@ -52,7 +78,7 @@ export default function FormBuilder({
       placeholder: '',
       required: false,
       order: fields.length,
-      options: [],
+      options: getDefaultOptions(fieldType),
       validations: [],
       conditionalLogic: [],
       helpText: '',

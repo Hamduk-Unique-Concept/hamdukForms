@@ -57,6 +57,32 @@ function parseMaybeJson(value: any, fallback: any) {
   }
 }
 
+function settingBool(settings: Record<string, any>, ...keys: string[]) {
+  return keys.some((key) => settings[key] === true || settings[key] === 'true');
+}
+
+function settingValue<T>(settings: Record<string, any>, fallback: T, ...keys: string[]) {
+  for (const key of keys) {
+    if (settings[key] !== undefined && settings[key] !== null && settings[key] !== '') {
+      return settings[key] as T;
+    }
+  }
+  return fallback;
+}
+
+async function getUserFromRequest(
+  supabase: ReturnType<typeof getSupabaseClient>,
+  request: NextRequest
+) {
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader) return null;
+  const token = authHeader.replace('Bearer ', '');
+  const {
+    data: { user },
+  } = await supabase.auth.getUser(token);
+  return user || null;
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -64,7 +90,7 @@ export async function POST(
   const supabase = getSupabaseClient();
   try {
     const { id: formId } = await params;
-    const { responses, publishToken, paymentRequired } = await request.json();
+    const { responses, publishToken, paymentRequired, formPassword } = await request.json();
 
     if (!formId || !responses) {
       return NextResponse.json(
@@ -75,7 +101,7 @@ export async function POST(
 
     const { data: form, error: formError } = await supabase
       .from('forms')
-      .select('id, organization_id, workspace_id, created_by, is_published, settings')
+      .select('id, organization_id, workspace_id, created_by, is_published, settings, require_password, form_password, allow_multiple_responses, max_responses, limit_one_response_per_user, scheduled_open_date, scheduled_close_date')
       .eq('id', formId)
       .single();
 
@@ -107,6 +133,93 @@ export async function POST(
         { message: 'Form is not published' },
         { status: 403 }
       );
+    }
+
+    const formSettings = parseMaybeJson(form.settings, {});
+    const effectivePaymentRequired = Boolean(paymentRequired || formSettings.enablePayment);
+    const currentUser = await getUserFromRequest(supabase, request);
+    const now = new Date();
+    const openDate = settingValue<string | null>(
+      formSettings,
+      form.scheduled_open_date || null,
+      'scheduledOpenDate',
+      'opensAt',
+      'openDate'
+    );
+    const closeDate = settingValue<string | null>(
+      formSettings,
+      form.scheduled_close_date || formSettings.expiresAt || null,
+      'scheduledCloseDate',
+      'closesAt',
+      'closeDate',
+      'expiresAt'
+    );
+
+    if (openDate && now < new Date(openDate)) {
+      return NextResponse.json({ message: 'This form is not open yet' }, { status: 403 });
+    }
+
+    if (closeDate && now > new Date(closeDate)) {
+      return NextResponse.json({ message: 'This form is closed' }, { status: 403 });
+    }
+
+    const requiresPassword =
+      form.require_password ||
+      settingBool(formSettings, 'requirePassword', 'require_password', 'passwordProtected');
+    const savedPassword = settingValue<string | null>(
+      formSettings,
+      form.form_password || null,
+      'formPassword',
+      'form_password',
+      'password'
+    );
+
+    if (requiresPassword && savedPassword && formPassword !== savedPassword) {
+      return NextResponse.json({ message: 'Invalid form password' }, { status: 401 });
+    }
+
+    const requiresLogin = settingBool(formSettings, 'requireLogin', 'require_login');
+    const oneResponsePerUser =
+      form.limit_one_response_per_user ||
+      settingBool(formSettings, 'limitOnePerUser', 'oneResponsePerPerson', 'one_response_per_person');
+
+    if ((requiresLogin || oneResponsePerUser) && !currentUser) {
+      return NextResponse.json({ message: 'Login is required to submit this form' }, { status: 401 });
+    }
+
+    const maxResponses = Number(
+      settingValue<number | string | null>(
+        formSettings,
+        form.max_responses || null,
+        'maxResponses',
+        'max_responses'
+      ) || 0
+    );
+
+    if (maxResponses > 0) {
+      const { count } = await supabase
+        .from('form_responses')
+        .select('id', { count: 'exact', head: true })
+        .eq('form_id', formId)
+        .in('status', ['completed', 'pending_payment']);
+
+      if ((count || 0) >= maxResponses) {
+        return NextResponse.json({ message: 'This form has reached its response limit' }, { status: 403 });
+      }
+    }
+
+    if (oneResponsePerUser && currentUser) {
+      const { data: existingResponse } = await supabase
+        .from('form_responses')
+        .select('id')
+        .eq('form_id', formId)
+        .or(`user_id.eq.${currentUser.id},respondent_id.eq.${currentUser.id}`)
+        .limit(1)
+        .maybeSingle();
+
+      if (existingResponse) {
+        return NextResponse.json({ message: 'You have already submitted this form' }, { status: 409 });
+      }
     }
 
     const responseAccess = await checkFeatureAccess(form.organization_id, 'max_responses_per_month');
@@ -142,9 +255,11 @@ export async function POST(
         form_id: formId,
         workspace_id: workspaceId,
         organization_id: form.organization_id,
+        user_id: currentUser?.id || null,
+        submitter_email: currentUser?.email || responses.email || null,
         response_data: responses,
-        status: paymentRequired ? 'pending_payment' : 'completed',
-        completed_at: paymentRequired ? null : new Date().toISOString(),
+        status: effectivePaymentRequired ? 'pending_payment' : 'completed',
+        completed_at: effectivePaymentRequired ? null : new Date().toISOString(),
         submitter_ip: request.headers.get('x-forwarded-for') || '',
         submitter_user_agent: request.headers.get('user-agent') || '',
       })
@@ -177,8 +292,7 @@ export async function POST(
     await supabase.rpc('increment_form_response_count', { target_form_id: formId });
 
     let ticketResult: any = null;
-    const formSettings = parseMaybeJson(form.settings, {});
-    if (formSettings.generateTickets && !formSettings.ticketAfterPaymentOnly && !paymentRequired) {
+    if (formSettings.generateTickets && !formSettings.ticketAfterPaymentOnly && !effectivePaymentRequired) {
       try {
         ticketResult = await createTicket({
           responseId: formResponse?.id,

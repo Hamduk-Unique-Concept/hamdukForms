@@ -37,7 +37,7 @@ export async function GET(
     // Get form details
     const { data: form, error: formError } = await supabase
       .from('forms')
-      .select('id, organization_id, title, description, settings, theme_config, branding_config')
+      .select('id, organization_id, title, description, settings, theme_config, branding_config, require_password, limit_one_response_per_user, max_responses, scheduled_open_date, scheduled_close_date')
       .eq('id', publishLink.form_id)
       .single();
 

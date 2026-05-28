@@ -7,6 +7,42 @@ function serializeColumnValue(value: any, fallback: any) {
   return typeof normalized === 'string' ? normalized : JSON.stringify(normalized);
 }
 
+function settingBool(settings: any, ...keys: string[]) {
+  return keys.some((key) => settings?.[key] === true || settings?.[key] === 'true');
+}
+
+function settingValue(settings: any, fallback: any, ...keys: string[]) {
+  for (const key of keys) {
+    if (settings?.[key] !== undefined && settings?.[key] !== null && settings?.[key] !== '') {
+      return settings[key];
+    }
+  }
+  return fallback;
+}
+
+function mapSettingsColumns(settings: any) {
+  const maxResponses = settingValue(settings, null, 'maxResponses', 'max_responses');
+
+  return {
+    show_progress_bar: settingBool(settings, 'progressBar', 'showProgressOnScroll'),
+    show_form_title: settingValue(settings, true, 'showFormTitle'),
+    show_form_description: settingValue(settings, true, 'showFormDescription'),
+    allow_multiple_responses: settingBool(settings, 'allowMultipleResponses'),
+    limit_one_response_per_user: settingBool(settings, 'limitOnePerUser', 'oneResponsePerPerson'),
+    max_responses: maxResponses ? Number(maxResponses) : null,
+    require_password: settingBool(settings, 'requirePassword', 'passwordProtected'),
+    form_password: settingValue(settings, null, 'formPassword', 'password'),
+    scheduled_open_date: settingValue(settings, null, 'scheduledOpenDate', 'opensAt', 'openDate'),
+    scheduled_close_date: settingValue(settings, null, 'scheduledCloseDate', 'closesAt', 'closeDate', 'expiresAt'),
+    thank_you_page_enabled: settingBool(settings, 'thankYouPageEnabled'),
+    thank_you_title: settingValue(settings, 'Thank you!', 'thankYouTitle'),
+    thank_you_message: settingValue(settings, null, 'thankYouMessage'),
+    redirect_url: settingValue(settings, null, 'redirectUrl'),
+    collect_email: settingBool(settings, 'collectEmail'),
+    collect_phone: settingBool(settings, 'collectPhone'),
+  };
+}
+
 async function getOrCreateDefaultWorkspace(
   supabase: ReturnType<typeof getSupabaseClient>,
   organizationId: string,
@@ -127,6 +163,7 @@ export async function POST(request: NextRequest) {
           name: title,
           workspace_id: workspaceId,
           settings: serializeColumnValue(settings, {}),
+          ...mapSettingsColumns(settings || {}),
           theme_config: serializeColumnValue(themeConfig, {}),
           branding_config: serializeColumnValue(brandingConfig, {}),
           updated_at: new Date(),
@@ -184,6 +221,7 @@ export async function POST(request: NextRequest) {
           status: 'draft',
           is_published: false,
           settings: serializeColumnValue(settings, {}),
+          ...mapSettingsColumns(settings || {}),
           theme_config: serializeColumnValue(themeConfig, {}),
           branding_config: serializeColumnValue(brandingConfig, {}),
         })
